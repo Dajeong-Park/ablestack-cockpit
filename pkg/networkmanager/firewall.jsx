@@ -920,11 +920,11 @@ export class Firewall extends React.Component {
                                     icon={ ExclamationCircleIcon } />;
         }
 
-        const addZoneAction = (
-            <Button variant="primary" onClick={this.openAddZoneDialog} id="add-zone-button" aria-label={_("Add a new zone")}>
-                {_("Add zone")}
-            </Button>
-        );
+        // const addZoneAction = (
+        //     <Button variant="primary" onClick={this.openAddZoneDialog} id="add-zone-button" aria-label={_("Add a new zone")}>
+        //         {_("Add zone")}
+        //     </Button>
+        // );
 
         const zones = [...this.state.firewall.activeZones].sort((z1, z2) =>
             z1 === firewall.defaultZone ? -1 : z2 === firewall.defaultZone ? 1 : 0
@@ -949,7 +949,7 @@ export class Firewall extends React.Component {
                                   </Title>
                                   <FirewallSwitch firewall={firewall} />
                               </Flex>
-                              { enabled && !firewall.readonly && <span className="btn-group">{addZoneAction}</span> }
+                              {/* { enabled && !firewall.readonly && <span className="btn-group">{addZoneAction}</span> } */}
                           </Flex>
                       </PageSection>}>
                 <PageSection id="zones-listing">

@@ -31,7 +31,7 @@ import {
 
 import { FirewallSwitch } from "./firewall-switch.jsx";
 import { ListingTable } from "cockpit-components-table.jsx";
-import { LogsPanel } from "cockpit-components-logs-panel.jsx";
+// import { LogsPanel } from "cockpit-components-logs-panel.jsx";
 import { NetworkPageDialogs } from './network-main-dialogs.jsx';
 import { NetworkPlots } from "./plots";
 
@@ -127,15 +127,15 @@ export const NetworkPage = ({ privileged, usage_monitor, plot_state, interfaces 
     plot_state.plot_instances('tx', tx_plot_data, plot_ifaces);
 
     /* Start of properties for the LogsPanel component */
-    const match = [
-        "_SYSTEMD_UNIT=NetworkManager.service", "+",
-        "_SYSTEMD_UNIT=firewalld.service"
-    ];
-    const search_options = {
-        prio: "debug",
-        _SYSTEMD_UNIT: "NetworkManager.service,firewalld.service"
-    };
-    const url = "/system/logs/#/?prio=debug&_SYSTEMD_UNIT=NetworkManager.service,firewalld.service";
+    // const match = [
+    //     "_SYSTEMD_UNIT=NetworkManager.service", "+",
+    //     "_SYSTEMD_UNIT=firewalld.service"
+    // ];
+    // const search_options = {
+    //     prio: "debug",
+    //     _SYSTEMD_UNIT: "NetworkManager.service,firewalld.service"
+    // };
+    // const url = "/system/logs/#/?prio=debug&_SYSTEMD_UNIT=NetworkManager.service,firewalld.service";
     /* End of properties for the LogsPanel component */
 
     return (
@@ -198,10 +198,10 @@ export const NetworkPage = ({ privileged, usage_monitor, plot_state, interfaces 
                                       ]}
                                       rows={unmanaged} />
                     </Card>}
-                    <LogsPanel title={_("Network logs")} match={match}
+                    {/* <LogsPanel title={_("Network logs")} match={match}
                                max={10} search_options={search_options}
                                goto_url={url}
-                               className="contains-list" />
+                               className="contains-list" /> */}
                 </Gallery>
             </PageSection>
         </Page>
