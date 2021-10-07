@@ -675,12 +675,30 @@
         }
 
         const type = prompt_data.echo ? "text" : "password";
-        id("conversation-prompt").textContent = prompt_data.prompt;
+        if (prompt_data.prompt == "Current password: " || prompt_data.prompt == "Current Password: ") {
+            id("conversation-prompt").textContent = _("Current password: ");
+        } else if (prompt_data.prompt == "New password: " || prompt_data.prompt.includes("Enter new")) {
+            id("conversation-prompt").textContent = _("New password: ");
+        } else if (prompt_data.prompt.includes("Retype new")) {
+            id("conversation-prompt").textContent = _("Retype new password: ");
+        } else if (prompt_data.prompt.includes("must wait longer to change")) {
+            id("conversation-prompt").textContent = _("must wait longer to change");
+        } else {
+            id("conversation-prompt").textContent = prompt_data.prompt;
+        }
 
         const em = id("conversation-message");
         const msg = prompt_data.error || prompt_data.message;
         if (msg) {
-            em.textContent = msg;
+            if (msg == "You are required to change your password immediately (administrator enforced)") {
+                em.textContent = _("You are required to change your password immediately (administrator enforced)");
+            } else if (msg.includes("BAD PASSWORD")) {
+                em.textContent = _("BAD PASSWORD");
+            } else if (msg == "Sorry, passwords do not match.") {
+                em.textContent = _("Sorry, passwords do not match.");
+            } else {
+                em.textContent = msg;
+            }
             show(em);
         } else {
             hide(em);

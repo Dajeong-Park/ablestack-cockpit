@@ -689,7 +689,7 @@ class ActivateZoneModal extends React.Component {
             });
             return !inZone;
         });
-        const virtualDevices = interfaces.filter(i => i.capabilities >= 7 && i.device !== "lo").sort((a, b) => a.device.localeCompare(b.device));
+        // const virtualDevices = interfaces.filter(i => i.capabilities >= 7 && i.device !== "lo").sort((a, b) => a.device.localeCompare(b.device));
         const physicalDevices = interfaces.filter(i => (i.capabilities < 5 || i.capabilities > 7) && i.device !== "lo").sort((a, b) => a.device.localeCompare(b.device));
         return (
             <Modal id="add-zone-dialog" isOpen
@@ -735,11 +735,11 @@ class ActivateZoneModal extends React.Component {
                         </Flex>
                     </FormGroup>
 
-                    <FormGroup label={ _("Description") }>
+                    {/* <FormGroup label={ _("Description") }>
                         <p id="add-zone-description-readonly">
                             { (this.state.zone && firewall.zones[this.state.zone].description) || _("No description available") }
                         </p>
-                    </FormGroup>
+                    </FormGroup> */}
 
                     <FormGroup label={ _("Included services") } hasNoPaddingTop>
                         <div id="add-zone-services-readonly">
@@ -756,13 +756,13 @@ class ActivateZoneModal extends React.Component {
                                       onChange={(value, event) => this.onInterfaceChange(event)}
                                       isChecked={this.state.interfaces.has(i.device)}
                                       label={i.device} />) }
-                        { virtualDevices.map(i =>
+                        {/* { virtualDevices.map(i =>
                             <Checkbox key={i.device}
                                       id={i.device}
                                       value={i.device}
                                       onChange={(value, event) => this.onInterfaceChange(event)}
                                       isChecked={this.state.interfaces.has(i.device)}
-                                      label={i.device} />) }
+                                      label={i.device} />) } */}
                     </FormGroup>
 
                     <FormGroup label={ _("Allowed addresses") } hasNoPaddingTop isInline>

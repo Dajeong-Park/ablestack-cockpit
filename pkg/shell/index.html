@@ -85,7 +85,7 @@
                 <a role="link" tabindex="0" id="go-logout" translate="yes">Log out</a>
              </li>
               <li>
-                <a>도움말</a>
+                <a role="link" tabindex="0" id="help-item" translate="yes">Help</a>
               </li>
             </ul>
           </div>
@@ -115,6 +115,38 @@
 
         <div id="oops-modal"></div>
 
+        <div hidden aria-hidden="true" id="help-dialog">
+            <div class="pf-c-backdrop">
+                <div class="pf-l-bullseye">
+                    <div class="pf-c-modal-box pf-m-md pf-m-align-top" role="dialog" aria-modal="true">
+                        <header class="pf-c-modal-box__header">
+                            <h1 class="pf-c-modal-box__title" translate="yes">Help</h1>
+                        </header>
+                        <div class="pf-c-modal-box__body">
+                            <div class="modal-body">
+                                <table class="listing-ct">
+                                    <tbody>
+                                        <tr id="credential-keys">
+                                            <td colspan="2">도움말 확인을 위해 다운로드 링크를 클릭하세요</td>
+                                            <td class="listing-ct-actions">
+                                                <a role="link" tabindex="0" href="https://github.com/ablecloud-team/ablestack-cockpit-plugin/raw/gs-cert/doc/ABLESTACK%20v1.0%20%E1%84%89%E1%85%A1%E1%84%8B%E1%85%AD%E1%86%BC%E1%84%8C%E1%85%A1%E1%84%86%E1%85%A2%E1%84%82%E1%85%B2%E1%84%8B%E1%85%A5%E1%86%AF.pdf">
+                                                    <i translate class="pficon pficon-save"></i>
+                                                    <span>다운로드</span>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <footer class="pf-c-modal-box__footer">
+                            <button class="pf-c-button pf-m-secondary" id="help-modal-close" translate="yes">Close</button>
+                        </footer>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div hidden aria-hidden="true" id="credentials-dialog">
             <div class="pf-c-backdrop">
                 <div class="pf-l-bullseye">
@@ -128,12 +160,6 @@
                                     <tbody>
                                         <tr id="credential-keys">
                                             <td colspan="2" translate>Use the following keys to authenticate against other systems</td>
-                                            <td class="listing-ct-actions">
-                                                <a role="link" tabindex="0">
-                                                    <i translate class="pficon pficon-add-circle-o"></i>
-                                                    <span translate>Add key</span>
-                                                </a>
-                                            </td>
                                         </tr>
                                         <tr class="load-custom-key hidden">
                                             <td colspan="3">

@@ -325,4 +325,13 @@ export function setup() {
             }
         });
     });
+
+    /* Dialog is shown */
+    $("#help-item").on("click", function() {
+        $("#help-dialog").prop('hidden', false);
+    });
+    /* Dialog is hidden */
+    $("#help-modal-close").on("click", function() {
+        $("#help-dialog").prop('hidden', true);
+    });
 }

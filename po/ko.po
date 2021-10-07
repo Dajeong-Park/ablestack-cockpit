@@ -91,6 +91,34 @@ msgstr "$0 문서"
 msgid "$0 error"
 msgstr "$0 오류"
 
+#: pkg/static/login.js:679
+msgid "Current password: "
+msgstr "현재 비밀번호: "
+
+#: pkg/static/login.js:681
+msgid "New password: "
+msgstr "새 비밀번호: "
+
+#: pkg/static/login.js:683
+msgid "Retype new password: "
+msgstr "새 비밀번호를 다시 입력하세요: "
+
+#: pkg/static/login.js:685
+msgid "must wait longer to change"
+msgstr "변경하려면 더 오래 기다려야 합니다."
+
+#: pkg/static/login.js:694
+msgid "You are required to change your password immediately (administrator enforced)"
+msgstr "비밀번호를 변경해야 합니다. (관리자 강제 적용)"
+
+#: pkg/static/login.js:696
+msgid "BAD PASSWORD"
+msgstr "올바르지 않은 비밀번호입니다. 다시 시도해주세요."
+
+#: pkg/static/login.js:698
+msgid "Sorry, passwords do not match."
+msgstr "비밀번호가 일치하지 않습니다. 다시 시도해주세요."
+
 #: pkg/base1/cockpit.js:2776
 msgid "$0 exited with code $1"
 msgstr "$0가 코드 $1로 종료됨"
@@ -4697,7 +4725,7 @@ msgstr "접두 길이"
 
 #: pkg/networkmanager/interfaces.js:1881
 msgid "Prefix length or netmask"
-msgstr "접두 길이 또는 넷마스크"
+msgstr "Netmask"
 
 #: pkg/networkmanager/interfaces.js:747
 msgid "Preparing"

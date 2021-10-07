@@ -103,11 +103,15 @@ export const NetworkInterfacePage = ({
         const location = cockpit.location;
 
         function modify() {
-            return deleteIfaceConnections(iface)
-                    .then(function () {
-                        location.go("/");
-                    })
-                    .catch(show_unexpected_error);
+            const result = confirm("선택하신 장치를 삭제하시겠습니까?");
+
+            if (result) {
+                return deleteIfaceConnections(iface)
+                        .then(function () {
+                            location.go("/");
+                        })
+                        .catch(show_unexpected_error);
+            }
         }
 
         if (iface) {
