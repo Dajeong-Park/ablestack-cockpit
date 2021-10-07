@@ -321,10 +321,17 @@ class AddServicesModal extends React.Component {
         }
         p.then(() => this.props.close())
                 .catch(error => {
-                    this.setState({
-                        dialogError: this.state.custom ? _("Failed to add port") : _("Failed to add service"),
-                        dialogErrorDetail: error.name + ": " + error.message,
-                    });
+                    if (error.message.includes("INVALID_NAME")) {
+                        this.setState({
+                            dialogError: this.state.custom ? _("Failed to add port") : _("Failed to add service"),
+                            dialogErrorDetail: "'" + this.state.custom_id + "' 문자열을 ID로 사용할 수 없습니다."
+                        });
+                    } else {
+                        this.setState({
+                            dialogError: this.state.custom ? _("Failed to add port") : _("Failed to add service"),
+                            dialogErrorDetail: error.name + ": " + error.message
+                        });
+                    }
                 });
 
         if (event)
