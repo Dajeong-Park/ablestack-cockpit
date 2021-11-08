@@ -30,6 +30,9 @@ import vdo_monitor_py from "raw-loader!./vdo-monitor.py";
 
 import { find_warnings } from "./warnings.jsx";
 
+import stratis2_set_key_py from "raw-loader!./stratis2-set-key.py";
+import stratis3_set_key_py from "raw-loader!./stratis3-set-key.py";
+
 /* STORAGED CLIENT
  */
 
@@ -200,7 +203,7 @@ function is_multipath_master(block) {
 }
 
 function update_indices() {
-    let path, block, mdraid, vgroup, pvol, lvol, part, i;
+    let path, block, mdraid, vgroup, pvol, lvol, pool, blockdev, fsys, part, i;
 
     client.broken_multipath_present = false;
     client.drives_multipath_blocks = { };
@@ -325,6 +328,63 @@ function update_indices() {
         client.lvols_pool_members[path].sort(function (a, b) { return a.Name.localeCompare(b.Name) });
     }
 
+    client.stratis_poolnames_pool = { };
+    for (path in client.stratis_pools) {
+        pool = client.stratis_pools[path];
+        client.stratis_poolnames_pool[pool.Name] = pool;
+    }
+
+    client.stratis_pooluuids_pool = { };
+    for (path in client.stratis_pools) {
+        pool = client.stratis_pools[path];
+        client.stratis_pooluuids_pool[pool.Uuid] = pool;
+    }
+
+    client.stratis_pool_blockdevs = { };
+    for (path in client.stratis_pools) {
+        client.stratis_pool_blockdevs[path] = [];
+    }
+    for (path in client.stratis_blockdevs) {
+        blockdev = client.stratis_blockdevs[path];
+        if (client.stratis_pools[blockdev.Pool] !== undefined)
+            client.stratis_pool_blockdevs[blockdev.Pool].push(blockdev);
+    }
+
+    client.stratis_pool_filesystems = { };
+    for (path in client.stratis_pools) {
+        client.stratis_pool_filesystems[path] = [];
+    }
+    for (path in client.stratis_filesystems) {
+        fsys = client.stratis_filesystems[path];
+        if (client.stratis_pools[fsys.Pool] !== undefined)
+            client.stratis_pool_filesystems[fsys.Pool].push(fsys);
+    }
+
+    client.blocks_stratis_fsys = { };
+    for (path in client.stratis_filesystems) {
+        fsys = client.stratis_filesystems[path];
+        block = client.slashdevs_block[fsys.Devnode];
+        if (block)
+            client.blocks_stratis_fsys[block.path] = fsys;
+    }
+
+    client.blocks_stratis_blockdev = { };
+    for (path in client.stratis_blockdevs) {
+        block = client.slashdevs_block[client.stratis_blockdevs[path].PhysicalPath];
+        if (block)
+            client.blocks_stratis_blockdev[block.path] = client.stratis_blockdevs[path];
+    }
+
+    client.blocks_stratis_locked_pool = { };
+    for (const uuid in client.stratis_manager.LockedPools) {
+        const devs = client.stratis_manager.LockedPools[uuid].devs.v;
+        for (const d of devs) {
+            block = client.slashdevs_block[d.devnode];
+            if (block)
+                client.blocks_stratis_locked_pool[block.path] = uuid;
+        }
+    }
+
     client.blocks_cleartext = { };
     for (path in client.blocks) {
         block = client.blocks[path];
@@ -363,6 +423,12 @@ function update_indices() {
         enter_job(client.jobs[path]);
     }
 }
+
+client.update = () => {
+    update_indices();
+    client.path_warnings = find_warnings(client);
+    client.dispatchEvent("changed");
+};
 
 function parse_simple_vars(text) {
     const res = { };
@@ -459,13 +525,22 @@ function init_model(callback) {
         return PK.detect().then(function (available) { client.features.packagekit = available });
     }
 
+    function enable_stratis_feature() {
+        return client.stratis_start().catch(error => {
+            if (error.problem != "not-found")
+                console.warn("Failed to start Stratis support", error);
+            return cockpit.resolve();
+        });
+    }
+
     function enable_features() {
         client.features = { };
         return (enable_udisks_features()
-                .then(enable_vdo_features)
                 .then(enable_clevis_features)
                 .then(enable_nfs_features)
-                .then(enable_pk_features));
+                .then(enable_pk_features)
+                .then(enable_stratis_feature)
+                .then(enable_vdo_features));
     }
 
     function query_fsys_info() {
@@ -522,17 +597,15 @@ function init_model(callback) {
             enable_features().then(function() {
                 query_fsys_info().then(function(fsys_info) {
                     client.fsys_info = fsys_info;
+
+                    client.storaged_client.addEventListener('notify', function () {
+                        client.update();
+                    });
+
+                    client.update();
                     callback();
                 });
             });
-
-            client.storaged_client.addEventListener('notify', function () {
-                update_indices();
-                client.path_warnings = find_warnings(client);
-                client.dispatchEvent("changed");
-            });
-            update_indices();
-            client.path_warnings = find_warnings(client);
         });
     });
 }
@@ -753,12 +826,7 @@ function vdo_overlay() {
             return v;
         });
 
-        // We trigger a change on the client right away and not
-        // just on the vdo_overlay since this data is used all
-        // over the place...
-
-        client.path_warnings = find_warnings(client);
-        client.dispatchEvent("changed");
+        client.update();
     }
 
     function start() {
@@ -831,6 +899,313 @@ function vdo_overlay() {
 }
 
 client.vdo_overlay = vdo_overlay();
+
+/* Stratis */
+
+client.stratis_start = () => {
+    return stratis2_start()
+            .catch(error => {
+                if (error.problem == "not-found")
+                    return stratis3_start();
+                return Promise.reject(error);
+            });
+};
+
+function stratis3_start() {
+    const stratis = cockpit.dbus("org.storage.stratis3", { superuser: "try" });
+    client.stratis_manager = stratis.proxy("org.storage.stratis3.Manager.r0",
+                                           "/org/storage/stratis3");
+
+    // The rest of the code expects these to be initialized even if no
+    // stratisd is found.
+    client.stratis_pools = { };
+    client.stratis_blockdevs = { };
+    client.stratis_filesystems = { };
+    client.stratis_manager.LockedPools = {};
+
+    return client.stratis_manager.wait()
+            .then(() => {
+                client.stratis_store_passphrase = (desc, passphrase) => {
+                    return python.spawn(stratis3_set_key_py, [desc], { superuser: true })
+                            .input(passphrase);
+                };
+
+                client.stratis_unlock_pool = (uuid) => {
+                    return client.stratis_manager.UnlockPool(uuid, "keyring");
+                };
+
+                client.stratis_create_pool = (name, devs, key_desc) => {
+                    return client.stratis_manager.CreatePool(name, [false, 0],
+                                                             devs,
+                                                             key_desc ? [true, key_desc] : [false, ""],
+                                                             [false, ["", ""]]);
+                };
+
+                client.stratis_list_keys = () => {
+                    return client.stratis_manager.ListKeys();
+                };
+
+                client.stratis_create_filesystem = (pool, name) => {
+                    return pool.CreateFilesystems([[name, [false, ""]]]);
+                };
+
+                client.features.stratis = true;
+                client.stratis_pools = client.stratis_manager.client.proxies("org.storage.stratis3.pool.r0",
+                                                                             "/org/storage/stratis3",
+                                                                             { watch: false });
+                client.stratis_blockdevs = client.stratis_manager.client.proxies("org.storage.stratis3.blockdev.r0",
+                                                                                 "/org/storage/stratis3",
+                                                                                 { watch: false });
+                client.stratis_filesystems = client.stratis_manager.client.proxies("org.storage.stratis3.filesystem.r0",
+                                                                                   "/org/storage/stratis3",
+                                                                                   { watch: false });
+
+                return stratis.watch({ path_namespace: "/org/storage/stratis3" }).then(() => {
+                    client.stratis_manager.client.addEventListener('notify', (event, data) => {
+                        client.update();
+                    });
+                });
+            });
+}
+
+function stratis2_start() {
+    const stratis = cockpit.dbus("org.storage.stratis2", { superuser: "try" });
+    client.stratis_manager = stratis.proxy("org.storage.stratis2.Manager.r1",
+                                           "/org/storage/stratis2");
+
+    // The rest of the code expects these to be initialized even if no
+    // stratisd is found.
+    client.stratis_pools = { };
+    client.stratis_blockdevs = { };
+    client.stratis_filesystems = { };
+    client.stratis_manager.LockedPools = {};
+
+    return client.stratis_manager.wait()
+            .then(() => {
+                if (utils.compare_versions(client.stratis_manager.Version, "2.4") < 0)
+                    return Promise.reject(new Error("stratisd too old, need at least version 2.4"));
+
+                client.stratis_store_passphrase = (desc, passphrase) => {
+                    return python.spawn(stratis2_set_key_py, [desc], { superuser: true })
+                            .input(passphrase);
+                };
+
+                client.stratis_unlock_pool = (uuid) => {
+                    return client.stratis_manager.UnlockPool(uuid);
+                };
+
+                client.stratis_create_pool = (name, devs, key_desc) => {
+                    return client.stratis_manager.CreatePool(name, [false, 0],
+                                                             devs,
+                                                             key_desc ? [true, key_desc] : [false, ""]);
+                };
+
+                client.stratis_create_filesystem = (pool, name) => {
+                    return pool.CreateFilesystems([name]);
+                };
+
+                client.stratis_list_keys = () => {
+                    return client.stratis_manager.client.call(client.stratis_manager.path,
+                                                              "org.storage.stratis2.FetchProperties.r2",
+                                                              "GetProperties", [["KeyList"]])
+                            .then(([result]) => {
+                                if (result.KeyList && result.KeyList[0])
+                                    return result.KeyList[1].v;
+                                else
+                                    return [];
+                            });
+                };
+
+                client.features.stratis = true;
+                client.stratis_pools = client.stratis_manager.client.proxies("org.storage.stratis2.pool.r1",
+                                                                             "/org/storage/stratis2",
+                                                                             { watch: false });
+                client.stratis_blockdevs = client.stratis_manager.client.proxies("org.storage.stratis2.blockdev.r2",
+                                                                                 "/org/storage/stratis2",
+                                                                                 { watch: false });
+                client.stratis_filesystems = client.stratis_manager.client.proxies("org.storage.stratis2.filesystem",
+                                                                                   "/org/storage/stratis2",
+                                                                                   { watch: false });
+
+                return stratis.watch({ path_namespace: "/org/storage/stratis2" }).then(() => {
+                    client.stratis_manager.client.addEventListener('notify', (event, data) => {
+                        client.update();
+                        stratis2_fixup_pool_notifications(data);
+                    });
+
+                    // We need to explicitly retrieve the values of
+                    // the "FetchProperties".  We do this whenever a
+                    // new object appears, when something happens that
+                    // might have changed them (for example when a
+                    // filesystem has been added to a pool we fetch
+                    // the properties of the pool), and also every 30
+                    // seconds, just to be safe.
+                    //
+                    // See https://github.com/stratis-storage/stratisd/issues/2148
+
+                    client.stratis_pools.addEventListener('added', (event, proxy) => {
+                        stratis2_fetch_pool_properties(proxy);
+                        // A entry might have disappeared from LockedPoolsWithDevs
+                        stratis2_fetch_manager_properties(client.stratis_manager);
+                    });
+
+                    client.stratis_blockdevs.addEventListener('added', (event, proxy) => {
+                        stratis2_fetch_pool_properties_by_path(proxy.Pool);
+                        stratis2_fetch_blockdev_properties(proxy);
+                    });
+
+                    client.stratis_blockdevs.addEventListener('removed', (event, proxy) => {
+                        stratis2_fetch_pool_properties_by_path(proxy.Pool);
+                    });
+
+                    client.stratis_filesystems.addEventListener('added', (event, proxy) => {
+                        stratis2_fetch_filesystem_properties(proxy);
+                        stratis2_fetch_pool_properties_by_path(proxy.Pool);
+                    });
+
+                    client.stratis_filesystems.addEventListener('removed', (event, proxy) => {
+                        stratis2_fetch_pool_properties_by_path(proxy.Pool);
+                    });
+
+                    stratis2_start_polling();
+                    return true;
+                });
+            })
+            .catch(err => {
+                if (err.problem == "not-found")
+                    err.message = "The name org.storage.stratis2 can not be activated on D-Bus.";
+                return Promise.reject(err);
+            });
+}
+
+function stratis2_fetch_properties(proxy, props) {
+    const stratis = client.stratis_manager.client;
+
+    return stratis.call(proxy.path, "org.storage.stratis2.FetchProperties.r4", "GetProperties", [props])
+            .then(([result]) => {
+                const values = { };
+                for (const p of props) {
+                    if (result[p] && result[p][0])
+                        values[p] = result[p][1].v;
+                }
+                return values;
+            })
+            .catch(error => {
+                console.warn("Failed to fetch properties:", proxy.path, props, error);
+                return { };
+            });
+}
+
+function stratis2_fetch_manager_properties(proxy) {
+    stratis2_fetch_properties(proxy, ["LockedPoolsWithDevs"]).then(values => {
+        if (values.LockedPoolsWithDevs) {
+            proxy.LockedPools = { };
+            for (const uuid in values.LockedPoolsWithDevs) {
+                const l = values.LockedPoolsWithDevs[uuid];
+                proxy.LockedPools[uuid] = {
+                    devs: l.devs,
+                    key_description: { t: "(bv)", v: [true, l.key_description] },
+                };
+            }
+            client.update();
+        }
+    });
+}
+
+function stratis2_fetch_pool_properties(proxy) {
+    if (!proxy.TotalPhysicalUsed)
+        proxy.TotalPhysicalUsed = [false, ""];
+    if (!proxy.KeyDescription)
+        proxy.KeyDescription = [false, ""];
+    stratis2_fetch_properties(proxy, ["TotalPhysicalSize", "TotalPhysicalUsed", "KeyDescription"]).then(values => {
+        if (values.TotalPhysicalSize)
+            proxy.TotalPhysicalSize = values.TotalPhysicalSize;
+        if (values.TotalPhysicalUsed)
+            proxy.TotalPhysicalUsed = [true, values.TotalPhysicalUsed];
+        if (values.KeyDescription)
+            proxy.KeyDescription = [true, values.KeyDescription];
+        client.update();
+    });
+}
+
+function stratis2_fetch_pool_properties_by_path(path) {
+    const pool = client.stratis_pools[path];
+    if (pool)
+        stratis2_fetch_pool_properties(pool);
+}
+
+function stratis2_fetch_filesystem_properties(proxy) {
+    if (!proxy.Used)
+        proxy.Used = [false, ""];
+    stratis2_fetch_properties(proxy, ["Used"]).then(values => {
+        if (values.Used)
+            proxy.Used = [true, values.Used];
+    });
+}
+
+function stratis2_fetch_blockdev_properties(proxy) {
+    stratis2_fetch_properties(proxy, ["TotalPhysicalSize"]).then(values => {
+        if (values.TotalPhysicalSize)
+            proxy.TotalPhysicalSize = values.TotalPhysicalSize;
+        client.update();
+    });
+}
+
+function stratis2_poll() {
+    stratis2_fetch_manager_properties(client.stratis_manager);
+
+    for (const path in client.stratis_pools)
+        stratis2_fetch_pool_properties(client.stratis_pools[path]);
+
+    for (const path in client.stratis_filesystems)
+        stratis2_fetch_filesystem_properties(client.stratis_filesystems[path]);
+
+    for (const path in client.stratis_blockdevs)
+        stratis2_fetch_blockdev_properties(client.stratis_blockdevs[path]);
+}
+
+function stratis2_start_polling() {
+    stratis2_poll();
+    window.setInterval(stratis2_poll, 30000);
+}
+
+function stratis2_fixup_pool_notifications(data) {
+    const fixup_data = { };
+    let have_fixup = false;
+
+    // When renaming a pool, stratisd 2.4.2 sends out notifications
+    // with wrong interface names and forgets about notifications for
+    // Devnode properties.
+    //
+    // https://github.com/stratis-storage/stratisd/issues/2731
+
+    for (const path in data) {
+        if (client.stratis_pools[path]) {
+            for (const iface in data[path]) {
+                if (iface == "org.storage.stratis2.filesystem") {
+                    const props = data[path][iface];
+                    if (props && props.Name) {
+                        // The pool at 'path' got renamed.
+                        fixup_data[path] = { "org.storage.stratis2.pool.r1": { Name: props.Name } };
+                        for (const fsys of client.stratis_pool_filesystems[path]) {
+                            fixup_data[fsys.path] = {
+                                "org.storage.stratis2.filesystem": {
+                                    Devnode: "/dev/stratis/" + props.Name + "/" + fsys.Name
+                                }
+                            };
+                        }
+                        have_fixup = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (have_fixup) {
+        const stratis = client.stratis_manager.client;
+        stratis.notify(fixup_data);
+    }
+}
 
 function init_client(manager, callback) {
     if (client.manager)

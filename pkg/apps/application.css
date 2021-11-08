@@ -2,18 +2,6 @@
 
 /* Application list */
 
-.app-list-empty {
-    color: var(--ct-color-subtle-copy);
-    text-align: center;
-    border-top: 1px solid var(--ct-color-border);
-    border-bottom: 1px solid var(--ct-color-border);
-}
-
-.app-list-empty .spinner {
-    margin-top: 5px;
-    margin-bottom: 5px;
-}
-
 .app-list img {
     width: 32px;
     height: 32px;
@@ -22,10 +10,6 @@
 
 .app-list .progress-title {
     margin-right: 10px;
-}
-
-.app-list .progress {
-    margin-bottom: 0px;
 }
 
 .app-list .pf-c-data-list__item-action button {
@@ -49,19 +33,6 @@
     margin-right: 10px;
 }
 
-.application-details .progress {
-    margin-bottom: 0px;
-}
-
 .app-screenshot {
     margin: 10px;
-}
-
-.caption-with-actions {
-    width: 100%;
-}
-
-.caption-with-actions span {
-    display: flex;
-    justify-content: space-between;
 }

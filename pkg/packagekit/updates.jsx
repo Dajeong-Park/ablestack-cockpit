@@ -16,17 +16,18 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
  */
-import '../lib/patternfly/patternfly-cockpit.scss';
+import '../lib/patternfly/patternfly-4-cockpit.scss';
 import 'polyfills'; // once per application
 
 import cockpit from "cockpit";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import ReactDOM from 'react-dom';
 
 import {
     Alert, Badge, Button, Gallery, Modal, Progress, Popover, Tooltip,
     Card, CardTitle, CardActions, CardHeader, CardBody,
     DescriptionList, DescriptionListTerm, DescriptionListGroup, DescriptionListDescription,
+    ExpandableSection,
     Flex, FlexItem,
     Spinner,
     Stack, StackItem,
@@ -34,12 +35,15 @@ import {
     Text, TextContent, TextListItem, TextList, TextVariants,
 } from '@patternfly/react-core';
 import {
+    BugIcon,
     CheckIcon,
+    EnhancementIcon,
     ExclamationCircleIcon,
     ExclamationTriangleIcon,
     RebootingIcon,
     RedoIcon,
-    ProcessAutomationIcon
+    ProcessAutomationIcon,
+    SecurityIcon,
 } from "@patternfly/react-icons";
 import { cellWidth, TableText } from "@patternfly/react-table";
 import { Remarkable } from "remarkable";
@@ -144,28 +148,6 @@ function shortenCockpitWsInstance(list) {
     return list;
 }
 
-const Expander = ({ title, onExpand, children }) => {
-    const [expanded, setExpanded] = useState(false);
-
-    useEffect(() => {
-        if (expanded && onExpand)
-            onExpand();
-    }, [expanded, onExpand]);
-
-    const cls = "expander-caret fa " + (expanded ? "fa-angle-down" : "fa-angle-right");
-    return (
-        <>
-            <div className="expander-title">
-                <hr />
-                <Button variant="link" onClick={ () => setExpanded(!expanded) }>
-                    <i className={cls} />{title}
-                </Button>
-                <hr />
-            </div>
-            {expanded ? children : null}
-        </>);
-};
-
 function count_security_updates(updates) {
     let num_security = 0;
     for (const u in updates)
@@ -180,6 +162,36 @@ function find_highest_severity(updates) {
         if (updates[u].severity > max)
             max = updates[u].severity;
     return max;
+}
+
+/**
+ * Get appropriate icon for an update severity
+ *
+ * info: An Enum.INFO_* level
+ * secSeverity: If given, further classification of the severity of Enum.INFO_SECURITY from the vendor_urls;
+ *              e. g. "critical", see https://access.redhat.com/security/updates/classification
+ * Returns: Icon JSX object
+ *
+ */
+function getSeverityIcon(info, secSeverity) {
+    let classes = "severity-icon";
+    if (secSeverity)
+        classes += " severity-" + secSeverity;
+    if (info == PK.Enum.INFO_SECURITY)
+        return <SecurityIcon aria-label={ secSeverity || _("security") } className={classes} />;
+    else if (info >= PK.Enum.INFO_NORMAL)
+        return <BugIcon className={classes} aria-label={ _("bug fix") } />;
+    else
+        return <EnhancementIcon className={classes} aria-label={ _("enhancement") } />;
+}
+
+function getPageStatusSeverityIcon(severity) {
+    if (severity == PK.Enum.INFO_SECURITY)
+        return "security";
+    else if (severity >= PK.Enum.INFO_NORMAL)
+        return "bug";
+    else
+        return "enhancement";
 }
 
 function getSeverityURL(urls) {
@@ -238,7 +250,7 @@ function updateItem(info, pkgNames, key) {
 
     let secSeverityURL = getSeverityURL(info.vendor_urls);
     const secSeverity = secSeverityURL ? secSeverityURL.slice(secSeverityURL.indexOf("#") + 1) : null;
-    const iconClasses = PK.getSeverityIcon(info.severity, secSeverity);
+    const icon = getSeverityIcon(info.severity, secSeverity);
     let type;
     if (info.severity === PK.Enum.INFO_SECURITY) {
         if (secSeverityURL)
@@ -246,7 +258,7 @@ function updateItem(info, pkgNames, key) {
         type = (
             <>
                 <Tooltip id="tip-severity" content={ secSeverity || _("security") }>
-                    <span aria-label={secSeverity || _("security")} className={iconClasses + ' severity-icon'} />
+                    {icon}
                     { (info.cve_urls && info.cve_urls.length > 0) ? info.cve_urls.length : "" }
                 </Tooltip>
             </>);
@@ -254,7 +266,7 @@ function updateItem(info, pkgNames, key) {
         const tip = (info.severity >= PK.Enum.INFO_NORMAL) ? _("bug fix") : _("enhancement");
         type = (
             <Tooltip id="tip-severity" content={tip}>
-                <span aria-label={tip} className={iconClasses + ' severity-icon'} />
+                {icon}
                 { bugs ? info.bug_urls.length : "" }
             </Tooltip>
         );
@@ -449,7 +461,7 @@ class RestartServices extends React.Component {
                                    title={_("Web Console will restart")}
                                    isInline>
                                    <p>
-                                       _("When the Web Console is restarted, you will no longer see progress information. However, the update process will continue in the background. Reconnect to continue watching the update process.")
+                                       {_("When the Web Console is restarted, you will no longer see progress information. However, the update process will continue in the background. Reconnect to continue watching the update process.")}
                                    </p>
                                </Alert>}
                            <Button variant='primary'
@@ -555,7 +567,7 @@ class ApplyUpdates extends React.Component {
                 </div>
 
                 <div className="update-log">
-                    <Expander title={_("Update log")} onExpand={() => {
+                    <ExpandableSection toggleText={_("Update log")} onToggle={() => {
                         // always scroll down on expansion
                         const log = document.getElementById("update-log");
                         log.scrollTop = log.scrollHeight;
@@ -571,7 +583,7 @@ class ApplyUpdates extends React.Component {
                                 </tbody>
                             </table>
                         </div>
-                    </Expander>
+                    </ExpandableSection>
                 </div>
             </>
         );
@@ -626,9 +638,9 @@ const UpdateSuccess = ({ onIgnore, openServiceRestartDialog, openRebootDialog, r
                                  </>
                              } />
             <div className="flow-list-blank-slate">
-                <Expander title={_("Package information")}>
+                <ExpandableSection toggleText={_("Package information")}>
                     <PackageList packages={history[0]} />
-                </Expander>
+                </ExpandableSection>
             </div>
         </>);
     }
@@ -703,9 +715,9 @@ const UpdateSuccess = ({ onIgnore, openServiceRestartDialog, openRebootDialog, r
                 </>
             } />
         <div className="flow-list-blank-slate">
-            <Expander title={_("Package information")}>
+            <ExpandableSection toggleText={_("Package information")}>
                 <PackageList packages={history[0]} />
-            </Expander>
+            </ExpandableSection>
         </div>
     </>);
 };
@@ -727,7 +739,7 @@ const UpdatesStatus = ({ updates, highestSeverity, timeSinceRefresh, tracerPacka
             notifications.push({
                 id: "security-updates-available",
                 stateStr: cockpit.format(stateStr, numSecurity),
-                icon: <span id="icon" className={PK.getSeverityIcon(highestSeverity)} />,
+                icon: getSeverityIcon(highestSeverity),
                 secondary: <Text id="last-checked" component={TextVariants.small}>{lastChecked}</Text>
             });
         } else {
@@ -737,7 +749,7 @@ const UpdatesStatus = ({ updates, highestSeverity, timeSinceRefresh, tracerPacka
             notifications.push({
                 id: "updates-available",
                 stateStr: cockpit.format(stateStr, numUpdates, numSecurity),
-                icon: <span id="icon" className={PK.getSeverityIcon(highestSeverity)} />,
+                icon: getSeverityIcon(highestSeverity),
                 secondary: <Text id="last-checked" component={TextVariants.small}>{lastChecked}</Text>
             });
         }
@@ -1277,7 +1289,6 @@ class OsUpdates extends React.Component {
                 title: _("Not registered"),
                 details: {
                     link: "subscriptions",
-                    icon: "fa fa-exclamation-triangle"
                 }
             });
 
@@ -1300,7 +1311,7 @@ class OsUpdates extends React.Component {
                 title: _("Checking for package updates..."),
                 details: {
                     link: false,
-                    icon: "spinner spinner-xs",
+                    pficon: "spinner",
                 }
             });
 
@@ -1345,7 +1356,7 @@ class OsUpdates extends React.Component {
                 type: num_security_updates > 0 ? "warning" : "info",
                 title: text,
                 details: {
-                    icon: PK.getSeverityIcon(highest_severity)
+                    pficon: getPageStatusSeverityIcon(highest_severity)
                 }
             });
 
@@ -1381,9 +1392,6 @@ class OsUpdates extends React.Component {
             page_status.set_own({
                 type: "error",
                 title: STATE_HEADINGS[this.state.state],
-                details: {
-                    icon: "fa fa-exclamation-circle"
-                }
             });
 
             return (
@@ -1473,7 +1481,7 @@ class OsUpdates extends React.Component {
                 title: STATE_HEADINGS[this.state.state],
                 details: {
                     link: false,
-                    icon: "fa fa-check-circle-o"
+                    pficon: "check",
                 }
             });
 

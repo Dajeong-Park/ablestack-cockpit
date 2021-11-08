@@ -23,7 +23,7 @@ import * as utils from "./utils.js";
 import {
     dialog_open,
     TextInput, PassInput, CheckBoxes, SelectOne, SizeSlider,
-    BlockingMessage, TeardownMessage
+    BlockingMessage, TeardownMessage, teardown_and_apply_title
 } from "./dialog.jsx";
 
 import { get_fstab_config, is_valid_mount_point } from "./fsys-tab.jsx";
@@ -83,13 +83,11 @@ export function initial_mount_options(client, block) {
     return initial_tab_options(client, block, true);
 }
 
-function teardown_and_format_title(usage) {
-    if (usage.Teardown && usage.Teardown.Mounts)
-        return _("Unmount and format");
-    else if (usage.Teardown && (usage.Teardown.PhysicalVolumes || usage.Teardown.MDRaidMembers))
-        return _("Remove and format");
-    else
-        return _("Format");
+export function teardown_and_format_title(usage) {
+    return teardown_and_apply_title(usage,
+                                    _("Format"),
+                                    _("Unmount and format"),
+                                    _("Remove and format"));
 }
 
 export const never_auto_explanation = _("If this option is checked, the filesystem will not be mounted during the next boot even if it was mounted before it.  This is useful if mounting during boot is not possible, such as when a passphrase is required to unlock the filesystem but booting is unattended.");
@@ -151,7 +149,7 @@ function format_dialog_internal(client, path, start, size, enable_dos_extended, 
         add_fsys(true, { value: "dos-extended", title: _("Extended partition") });
 
     function is_encrypted(vals) {
-        return vals.crypto !== "none";
+        return vals.crypto && vals.crypto !== "none";
     }
 
     function add_crypto_type(value, title, recommended) {
@@ -216,7 +214,7 @@ function format_dialog_internal(client, path, start, size, enable_dos_extended, 
 
     const dlg = dialog_open({
         Title: title,
-        Footer: TeardownMessage(usage),
+        Teardown: TeardownMessage(usage),
         Fields: [
             TextInput("name", _("Name"),
                       {
@@ -233,10 +231,10 @@ function format_dialog_internal(client, path, start, size, enable_dos_extended, 
                                return create_partition;
                            }
                        }),
-            CheckBoxes("erase", _("Erase"),
+            CheckBoxes("erase", _("Overwrite"),
                        {
                            fields: [
-                               { tag: "on", title: _("Overwrite existing data with zeros") }
+                               { tag: "on", title: _("Overwrite existing data with zeros (slower)") }
                            ],
                        }),
             TextInput("mount_point", _("Mount point"),
@@ -267,54 +265,55 @@ function format_dialog_internal(client, path, start, size, enable_dos_extended, 
             SelectOne("crypto", _("Encryption"),
                       {
                           choices: crypto_types,
-                          value: offer_keep_keys ? " keep" : "none"
-                      }),
-            [
-                PassInput("passphrase", _("Passphrase"),
-                          {
-                              validate: function (phrase, vals) {
-                                  if (vals.crypto != " keep" && phrase === "")
-                                      return _("Passphrase cannot be empty");
-                              },
-                              visible: vals => is_encrypted(vals) && vals.crypto != " keep",
-                          }),
-                PassInput("passphrase2", _("Confirm"),
-                          {
-                              validate: function (phrase2, vals) {
-                                  if (vals.crypto != " keep" && phrase2 != vals.passphrase)
-                                      return _("Passphrases do not match");
-                              },
-                              visible: vals => is_encrypted(vals) && vals.crypto != " keep",
-                          }),
-                CheckBoxes("store_passphrase", "",
-                           {
-                               visible: vals => is_encrypted(vals) && vals.crypto != " keep",
-                               value: {
-                                   on: false,
-                               },
-                               fields: [
-                                   { title: _("Store passphrase"), tag: "on" }
-                               ]
-                           }),
-                PassInput("old_passphrase", _("Passphrase"),
-                          {
-                              validate: function (phrase) {
-                                  if (phrase === "")
-                                      return _("Passphrase cannot be empty");
-                              },
-                              visible: vals => vals.crypto == " keep" && vals.needs_explicit_passphrase,
-                              explanation: _("The disk needs to be unlocked before formatting.  Please provide a existing passphrase.")
-                          }),
-                TextInput("crypto_options", _("Encryption options"),
-                          {
-                              visible: is_encrypted,
-                              value: crypto_extra_options
-                          })
-            ],
+                          value: offer_keep_keys ? " keep" : "none",
+                          visible: vals => vals.type != "dos-extended",
+                          nested_fields: [
+                              PassInput("passphrase", _("Passphrase"),
+                                        {
+                                            validate: function (phrase, vals) {
+                                                if (vals.crypto != " keep" && phrase === "")
+                                                    return _("Passphrase cannot be empty");
+                                            },
+                                            visible: vals => is_encrypted(vals) && vals.crypto != " keep",
+                                        }),
+                              PassInput("passphrase2", _("Confirm"),
+                                        {
+                                            validate: function (phrase2, vals) {
+                                                if (vals.crypto != " keep" && phrase2 != vals.passphrase)
+                                                    return _("Passphrases do not match");
+                                            },
+                                            visible: vals => is_encrypted(vals) && vals.crypto != " keep",
+                                        }),
+                              CheckBoxes("store_passphrase", "",
+                                         {
+                                             visible: vals => is_encrypted(vals) && vals.crypto != " keep",
+                                             value: {
+                                                 on: false,
+                                             },
+                                             fields: [
+                                                 { title: _("Store passphrase"), tag: "on" }
+                                             ]
+                                         }),
+                              PassInput("old_passphrase", _("Passphrase"),
+                                        {
+                                            validate: function (phrase) {
+                                                if (phrase === "")
+                                                    return _("Passphrase cannot be empty");
+                                            },
+                                            visible: vals => vals.crypto == " keep" && vals.needs_explicit_passphrase,
+                                            explanation: _("The disk needs to be unlocked before formatting.  Please provide a existing passphrase.")
+                                        }),
+                              TextInput("crypto_options", _("Encryption options"),
+                                        {
+                                            visible: is_encrypted,
+                                            value: crypto_extra_options
+                                        })
+                          ]
+                      })
         ],
         Action: {
             Title: create_partition ? _("Create partition") : teardown_and_format_title(usage),
-            Danger: (create_partition ? null : _("Formatting a storage device will erase all data on it.")),
+            Danger: (create_partition ? null : _("Formatting erases all data on a storage device.")),
             wrapper: job_progress_wrapper(client, block.path, client.blocks_cleartext[block.path]?.path),
             action: function (vals) {
                 const options = {

@@ -19,8 +19,8 @@
 
 import cockpit from "cockpit";
 import {
-    dialog_open, TextInput, PassInput, SelectOne, SizeSlider,
-    BlockingMessage, TeardownMessage
+    dialog_open, TextInput, PassInput, SelectOne, SizeSlider, CheckBoxes,
+    BlockingMessage, TeardownMessage, teardown_and_apply_title
 } from "./dialog.jsx";
 import * as utils from "./utils.js";
 
@@ -34,14 +34,16 @@ import { ExclamationTriangleIcon } from "@patternfly/react-icons";
 import { ListingTable } from "cockpit-components-table.jsx";
 import { ListingPanel } from 'cockpit-components-listing-panel.jsx';
 import { StorageButton, StorageBarMenu, StorageMenuItem } from "./storage-controls.jsx";
-import { format_dialog, parse_options, extract_option, unparse_options } from "./format-dialog.jsx";
+import {
+    format_dialog, parse_options, extract_option, unparse_options
+} from "./format-dialog.jsx";
 import { job_progress_wrapper } from "./jobs-panel.jsx";
 
 import { FilesystemTab, is_mounted, mounting_dialog, get_fstab_config } from "./fsys-tab.jsx";
 import { CryptoTab, edit_config } from "./crypto-tab.jsx";
 import { get_existing_passphrase, unlock_with_type } from "./crypto-keyslots.jsx";
 import { BlockVolTab, PoolVolTab } from "./lvol-tabs.jsx";
-import { PVolTab, MDRaidMemberTab, VDOBackingTab } from "./pvol-tabs.jsx";
+import { PVolTab, MDRaidMemberTab, VDOBackingTab, StratisBlockdevTab } from "./pvol-tabs.jsx";
 import { PartitionTab } from "./part-tab.jsx";
 import { SwapTab } from "./swap-tab.jsx";
 import { UnrecognizedTab } from "./unrecognized-tab.jsx";
@@ -92,13 +94,13 @@ export function set_crypto_auto_option(block, flag) {
     return set_crypto_options(block, null, flag);
 }
 
-function create_tabs(client, target, is_partition) {
+function create_tabs(client, target, is_partition, is_extended) {
     function endsWith(str, suffix) {
         return str.indexOf(suffix, str.length - suffix.length) !== -1;
     }
 
     const block = endsWith(target.iface, ".Block") ? target : null;
-    const is_crypto = (block && block.IdUsage == 'crypto');
+    let is_crypto = (block && block.IdUsage == 'crypto');
     const content_block = is_crypto ? client.blocks_cleartext[block.path] : block;
 
     const block_fsys = content_block && client.blocks_fsys[content_block.path];
@@ -106,11 +108,21 @@ function create_tabs(client, target, is_partition) {
     const block_pvol = content_block && client.blocks_pvol[content_block.path];
     const block_swap = content_block && client.blocks_swap[content_block.path];
 
+    const block_stratis_blockdev = block && client.blocks_stratis_blockdev[block.path];
+    const block_stratis_locked_pool = block && client.blocks_stratis_locked_pool[block.path];
+
     const lvol = (endsWith(target.iface, ".LogicalVolume")
         ? target
         : block_lvm2 && client.lvols[block_lvm2.LogicalVolume]);
 
     const is_filesystem = (content_block && content_block.IdUsage == 'filesystem');
+    const is_stratis = ((content_block && content_block.IdUsage == "raid" && content_block.IdType == "stratis") ||
+                      (block_stratis_blockdev && client.stratis_pools[block_stratis_blockdev.Pool]) ||
+                      block_stratis_locked_pool);
+
+    // Adjust for encryption leaking out of Stratis
+    if (is_crypto && is_stratis)
+        is_crypto = false;
 
     let warnings = client.path_warnings[target.path] || [];
     if (content_block)
@@ -187,7 +199,9 @@ function create_tabs(client, target, is_partition) {
         add_tab(_("Filesystem"), FilesystemTab, true, ["mismounted-fsys"]);
     } else if ((content_block && content_block.IdUsage == "raid" && content_block.IdType == "LVM2_member") ||
                (block_pvol && client.vgroups[block_pvol.VolumeGroup])) {
-        add_tab(_("Physical volume"), PVolTab, true);
+        add_tab(_("LVM2 physical volume"), PVolTab, true);
+    } else if (is_stratis) {
+        add_tab(_("Stratis pool"), StratisBlockdevTab, false);
     } else if ((content_block && content_block.IdUsage == "raid") ||
                (content_block && client.mdraids[content_block.MDRaidMember])) {
         add_tab(_("RAID member"), MDRaidMemberTab, true);
@@ -302,10 +316,12 @@ function create_tabs(client, target, is_partition) {
     }
 
     if (lvol) {
-        if (lvol.Active) {
-            add_menu_action(_("Deactivate"), deactivate);
-        } else {
-            add_action(_("Activate"), activate);
+        if (lvol.Type != "pool") {
+            if (lvol.Active) {
+                add_menu_action(_("Deactivate"), deactivate);
+            } else {
+                add_action(_("Activate"), activate);
+            }
         }
         if (client.lvols[lvol.ThinPool]) {
             add_menu_action(_("Create snapshot"), create_snapshot);
@@ -358,11 +374,14 @@ function create_tabs(client, target, is_partition) {
             }
 
             dialog_open({
-                Title: cockpit.format(_("Please confirm deletion of $0"), name),
-                Footer: TeardownMessage(usage),
+                Title: cockpit.format(_("Permanently delete $0?"), name),
+                Teardown: TeardownMessage(usage),
                 Action: {
                     Danger: danger,
-                    Title: _("Delete"),
+                    Title: teardown_and_apply_title(usage,
+                                                    _("Delete"),
+                                                    _("Unmount and delete"),
+                                                    _("Remove and delete")),
                     action: function () {
                         return utils.teardown_active_usage(client, usage)
                                 .then(function () {
@@ -377,7 +396,7 @@ function create_tabs(client, target, is_partition) {
         }
     }
 
-    if (block) {
+    if (block && !is_extended) {
         if (is_unrecognized)
             add_action(_("Format"), () => format_dialog(client, block.path));
         else
@@ -407,6 +426,8 @@ function create_tabs(client, target, is_partition) {
 
 function block_description(client, block) {
     let usage;
+    const block_stratis_blockdev = client.blocks_stratis_blockdev[block.path];
+    const block_stratis_locked_pool = client.blocks_stratis_locked_pool[block.path];
     const cleartext = client.blocks_cleartext[block.path];
     if (cleartext)
         block = cleartext;
@@ -417,6 +438,8 @@ function block_description(client, block) {
         const [config] = get_fstab_config(block, true);
         if (config)
             usage = C_("storage-id-desc", "Filesystem (encrypted)");
+        else if (block_stratis_locked_pool)
+            usage = cockpit.format(_("Blockdev of locked Stratis pool $0"), block_stratis_locked_pool);
         else
             usage = C_("storage-id-desc", "Locked encrypted data");
     } else if (block.IdUsage == "filesystem") {
@@ -424,12 +447,17 @@ function block_description(client, block) {
     } else if (block.IdUsage == "raid") {
         if (block_pvol && client.vgroups[block_pvol.VolumeGroup]) {
             const vgroup = client.vgroups[block_pvol.VolumeGroup];
-            usage = cockpit.format(_("Physical volume of $0"), vgroup.Name);
+            usage = cockpit.format(_("LVM2 physical volume of $0"), vgroup.Name);
         } else if (client.mdraids[block.MDRaidMember]) {
             const mdraid = client.mdraids[block.MDRaidMember];
             usage = cockpit.format(_("Member of RAID device $0"), utils.mdraid_name(mdraid));
+        } else if (block_stratis_blockdev && client.stratis_pools[block_stratis_blockdev.Pool]) {
+            const pool = client.stratis_pools[block_stratis_blockdev.Pool];
+            usage = cockpit.format(_("Blockdev of Stratis pool $0"), pool.Name);
         } else if (block.IdType == "LVM2_member") {
-            usage = _("Physical volume");
+            usage = _("LVM2 physical volume");
+        } else if (block.IdType == "stratis") {
+            usage = _("Member of Stratis Pool");
         } else {
             usage = _("Member of RAID device");
         }
@@ -549,7 +577,7 @@ function append_partitions(client, rows, level, block) {
             size: partition.size,
             text: _("Extended partition")
         };
-        const tabs = create_tabs(client, partition.block, true);
+        const tabs = create_tabs(client, partition.block, true, true);
         append_row(client, rows, level, partition.block.path, utils.block_name(partition.block), desc, tabs, partition.block.path);
         process_partitions(level + 1, partition.partitions);
     }
@@ -606,16 +634,9 @@ const BlockContent = ({ client, block, allow_partitions }) => {
         }
 
         dialog_open({
-            Title: cockpit.format(_("Format disk $0"), utils.block_name(block)),
-            Footer: TeardownMessage(usage),
+            Title: cockpit.format(_("Initialize disk $0"), utils.block_name(block)),
+            Teardown: TeardownMessage(usage),
             Fields: [
-                SelectOne("erase", _("Erase"),
-                          {
-                              choices: [
-                                  { value: "no", title: _("Don't overwrite existing data") },
-                                  { value: "zero", title: _("Overwrite existing data with zeros") }
-                              ]
-                          }),
                 SelectOne("type", _("Partitioning"),
                           {
                               value: "gpt",
@@ -627,18 +648,27 @@ const BlockContent = ({ client, block, allow_partitions }) => {
                                   },
                                   { value: "empty", title: _("No partitioning") }
                               ]
-                          })
+                          }),
+                CheckBoxes("erase", _("Overwrite"),
+                           {
+                               fields: [
+                                   { tag: "on", title: _("Overwrite existing data with zeros (slower)") }
+                               ],
+                           }),
             ],
             Action: {
-                Title: _("Format"),
-                Danger: _("Formatting a disk will erase all data on it."),
+                Title: teardown_and_apply_title(usage,
+                                                _("Initialize"),
+                                                _("Unmount and initialize"),
+                                                _("Remove and initialize")),
+                Danger: _("Initializing erases all data on a disk."),
                 wrapper: job_progress_wrapper(client, block.path),
                 action: function (vals) {
                     const options = {
                         'tear-down': { t: 'b', v: true }
                     };
-                    if (vals.erase != "no")
-                        options.erase = { t: 's', v: vals.erase };
+                    if (vals.erase.on)
+                        options.erase = { t: 's', v: "zero" };
                     return utils.teardown_active_usage(client, usage)
                             .then(function () {
                                 return block.Format(vals.type, options);

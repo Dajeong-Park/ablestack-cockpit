@@ -97,7 +97,15 @@ function generateDeps(makefile, stats) {
         if (fs.lstatSync(file).isDirectory())
             continue;
 
-        inputs.add(path.relative(srcdir, file));
+        const input = path.relative(srcdir, file);
+
+        // HACK: webpack looks at files in parent dir: https://github.com/webpack/webpack/issues/14481
+        if (input.startsWith("../")) {
+            process.stderr.write(`webpack-make: Ignoring file dependency ${file} outside of project directory: ${srcdir}\n`);
+            continue;
+        }
+
+        inputs.add(input);
     }
 
     const uncompressed_patterns = [

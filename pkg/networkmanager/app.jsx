@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
  */
-import '../lib/patternfly/patternfly-cockpit.scss';
+import '../lib/patternfly/patternfly-4-cockpit.scss';
 import cockpit from "cockpit";
 import ReactDOM from "react-dom";
 import React, { useRef } from 'react';
@@ -58,6 +58,10 @@ const App = () => {
     const usage_monitor = useObject(() => new UsageMonitor(), null, []);
     const plot_state_main = useObject(() => new PlotState(), null, []);
     const plot_state_iface = useObject(() => new PlotState(), null, []);
+
+    if (model.curtain == 'testing' || model.curtain == 'restoring') {
+        return <EmptyStatePanel loading title={model.curtain == 'testing' ? _("Testing connection") : _("Restoring connection")} />;
+    }
 
     if (model.ready === undefined)
         return <EmptyStatePanel loading />;
@@ -111,6 +115,7 @@ const App = () => {
         return (
             <ModelContext.Provider value={model}>
                 <NetworkPage privileged={superuser.allowed}
+                             operationInProgress={model.operationInProgress}
                              usage_monitor={usage_monitor}
                              plot_state={plot_state_main}
                              interfaces={interfaces} />
@@ -123,6 +128,7 @@ const App = () => {
             return (
                 <ModelContext.Provider value={model}>
                     <NetworkInterfacePage privileged={superuser.allowed}
+                                          operationInProgress={model.operationInProgress}
                                           usage_monitor={usage_monitor}
                                           plot_state={plot_state_iface}
                                           interfaces={interfaces}

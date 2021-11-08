@@ -30,14 +30,15 @@ import {
 import { PlusIcon, MinusIcon } from "@patternfly/react-icons";
 
 import * as utils from "./utils.js";
-import { fmt_to_fragments } from "./utilsx.jsx";
+import { fmt_to_fragments } from "utils.jsx";
 import { StdDetailsLayout } from "./details.jsx";
 import { SidePanel, SidePanelBlockRow } from "./side-panel.jsx";
 import { VGroup } from "./content-views.jsx";
 import { StorageButton } from "./storage-controls.jsx";
 import {
     dialog_open, TextInput, SelectSpaces,
-    BlockingMessage, TeardownMessage
+    BlockingMessage, TeardownMessage,
+    teardown_and_apply_title
 } from "./dialog.jsx";
 
 const _ = cockpit.gettext;
@@ -196,11 +197,14 @@ export class VGroupDetails extends React.Component {
             }
 
             dialog_open({
-                Title: cockpit.format(_("Please confirm deletion of $0"), vgroup.Name),
-                Footer: TeardownMessage(usage),
+                Title: cockpit.format(_("Permanently delete $0?"), vgroup.Name),
+                Teardown: TeardownMessage(usage),
                 Action: {
-                    Danger: _("Deleting a volume group will erase all data on it."),
-                    Title: _("Delete"),
+                    Danger: _("Deleting erases all data on a volume group."),
+                    Title: teardown_and_apply_title(usage,
+                                                    _("Delete"),
+                                                    _("Unmount and delete"),
+                                                    _("Remove and delete")),
                     action: function () {
                         return utils.teardown_active_usage(client, usage)
                                 .then(function () {
@@ -218,7 +222,7 @@ export class VGroupDetails extends React.Component {
         const header = (
             <Card>
                 <CardHeader>
-                    <CardTitle><Text component={TextVariants.h2}>{fmt_to_fragments(_("Volume group $0"), <b>{vgroup.Name}</b>)}</Text></CardTitle>
+                    <CardTitle><Text component={TextVariants.h2}>{fmt_to_fragments(_("LVM2 volume group $0"), <b>{vgroup.Name}</b>)}</Text></CardTitle>
                     <CardActions>
                         <StorageButton onClick={rename}>{_("Rename")}</StorageButton>
                         { "\n" }

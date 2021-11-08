@@ -17,67 +17,62 @@
  * along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
  */
 
-import '../lib/patternfly/patternfly-cockpit.scss';
+import '../lib/patternfly/patternfly-4-cockpit.scss';
 import "polyfills";
 
 import cockpit from "cockpit";
 
-import React from "react";
+import React, { useState } from "react";
 import ReactDOM from 'react-dom';
 
+import { EmptyStatePanel } from "cockpit-components-empty-state.jsx";
 import { ApplicationList } from "./application-list.jsx";
 import { Application } from "./application.jsx";
 import { get_metainfo_db } from "./appstream.js";
+import { usePageLocation, useObject, useEvent } from "hooks";
+import { show_error } from "./utils.jsx";
 
 import "page.scss";
 
-const metainfo_db = get_metainfo_db();
+const App = () => {
+    const [progress, setProgress] = useState({});
+    const [progressTitle, setProgressTitle] = useState({});
 
-function render_list() {
-    ReactDOM.render(<ApplicationList metainfo_db={metainfo_db} />,
-                    document.getElementById('list-page'));
-}
+    function action(func, arg, progress_title, id) {
+        setProgressTitle({ ...progressTitle, [id]: progress_title });
+        func(arg, progress => setProgress({ ...progress, [id]: progress }))
+                .finally(() => setProgress({ ...progress, [id]: null }))
+                .catch(show_error);
+    }
 
-function render_app() {
-    ReactDOM.render(<Application metainfo_db={metainfo_db} id={cockpit.location.path[0]} />,
-                    document.getElementById('app-page'));
-}
+    const { path } = usePageLocation();
 
-function show(id) {
-    document.getElementById(id).style.display = 'block';
-}
+    const metainfo_db = useObject(get_metainfo_db, null, []);
+    useEvent(metainfo_db, "changed");
 
-function hide(id) {
-    document.getElementById(id).style.display = 'none';
-}
-
-function navigate() {
-    const path = cockpit.location.path;
+    if (!metainfo_db.ready)
+        return <EmptyStatePanel loading />;
 
     if (path.length === 0) {
-        show('list-page');
-        hide('app-page');
-    } else if (path.length === 1) {
-        render_app();
-        hide('list-page');
-        show('app-page');
+        return <ApplicationList metainfo_db={metainfo_db}
+                                action={action}
+                                appProgress={progress}
+                                appProgressTitle={progressTitle} />;
+    } else if (path.length == 1) {
+        const id = cockpit.location.path[0];
+        return <Application metainfo_db={metainfo_db}
+                            action={action}
+                            progress={progress[id]}
+                            progressTitle={progressTitle[id]}
+                            id={id} />;
     } else { /* redirect */
         console.warn("not a apps location: " + path);
         cockpit.location = '';
     }
+};
+
+function init() {
+    ReactDOM.render(<App />, document.getElementById("apps-page"));
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    cockpit.translate();
-
-    metainfo_db.addEventListener("changed", () => {
-        render_list();
-        render_app();
-    });
-
-    render_list();
-    cockpit.addEventListener("locationchanged", navigate);
-    navigate();
-
-    document.body.removeAttribute('hidden');
-});
+document.addEventListener("DOMContentLoaded", init);

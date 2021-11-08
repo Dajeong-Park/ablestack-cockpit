@@ -1,18 +1,6 @@
-@import "../../node_modules/@patternfly/react-styles/css/components/Alert/alert.css";
-@import "../../node_modules/@patternfly/patternfly/components/Button/button.css";
-@import "../../node_modules/@patternfly/patternfly/components/Page/page.css";
-@import "../../node_modules/@patternfly/patternfly/components/Breadcrumb/breadcrumb.css";
-@import "../../node_modules/@patternfly/patternfly/layouts/Gallery/gallery.css";
-@import "../../node_modules/@patternfly/patternfly/components/Card/card.css";
-@import "../../node_modules/@patternfly/patternfly/components/FormControl/form-control.css";
 @import "../../node_modules/@patternfly/patternfly/components/Table/table.css";
 @import "../../node_modules/@patternfly/patternfly/components/Table/table-grid.css";
 @import "../../node_modules/@patternfly/patternfly/components/Toolbar/toolbar.css";
-
-/* The following are needed for the Modal */
-@import "../../node_modules/@patternfly/patternfly/components/Backdrop/backdrop.css";
-@import "../../node_modules/@patternfly/patternfly/layouts/Bullseye/bullseye.css";
-@import "../../node_modules/@patternfly/patternfly/components/ModalBox/modal-box.css";
 
 // Pull in variables (especially for breakpoints)
 @import "_global-variables.scss";
@@ -51,50 +39,8 @@
     }
 }
 
-.ipv4-address {
-    display: inline;
-
-    input {
-        width: 2em;
-        background: none;
-        border: none;
-        text-align: center;
-    }
-}
-
 .network-number-field {
-    width: 4em;
-}
-
-.network-ip-settings-row {
-    border-bottom: 1px solid lightgray;
-    padding-bottom: 10px;
-
-    &:last-of-type {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    table {
-        margin-top: 20px;
-    }
-
-    tr {
-        background: #F4F4F4;
-        border: 1px solid #BABABA;
-
-        td {
-            padding: 4px;
-        }
-    }
-
-    .pf-m-secondary {
-        margin-right: 5px;
-    }
-
-    tr td .pf-m-secondary {
-        margin-right: 0px;
-    }
+    max-width: 4em;
 }
 
 .network-graph {
@@ -148,9 +94,10 @@ th {
     th[data-label=Name] button {
         font-weight: var(--pf-global--FontWeight--bold);
 
+        // Preserve the same baseline as other elements, so items align
+        display: inline;
         // Expand the link to the container, for easier clickability
-        display: block;
-        text-align: left;
+        width: 100%;
     }
 }
 
@@ -169,79 +116,15 @@ th {
     padding-left: var(--pf-global--spacer--md);
 }
 
-// IPv4 / IPv6 settings
-#network-ip-settings-dialog {
-    @at-root {
-        // Used in IPv4 / IPv6 automatic to manual selections
-        .inverted-switchbox {
-            margin-right: var(--pf-global--spacer--md);
-        }
-
-        .network-ip-settings-row {
-            border-bottom: 1px solid lightgray;
-            padding-bottom: 10px;
-
-            &:last-of-type {
-                border-bottom: none;
-                padding-bottom: 0;
-            }
-
-            .pf-m-secondary {
-                margin-right: 5px;
-            }
-
-            table {
-                margin-top: 20px;
-            }
-
-            tr {
-                background: #F4F4F4;
-                border: 1px solid #BABABA;
-            }
-
-            td {
-                padding: 4px;
-                text-align: right;
-                padding-right: 0;
-
-                &:last-child {
-                    width: 28px;
-                }
-
-                .pf-m-secondary {
-                    margin-right: 4px;
-                }
-            }
-        }
-    }
+#network-mtu-settings-custom {
+    position: relative;
+    top: 6px;
 }
 
-#network-mtu-settings {
-    &-dialog label {
-        input[type=radio] {
-            position: relative;
-            top: 3px;
-            margin-right: 0.5em;
-        }
-    }
-
-    &-input {
-        margin-left: 0.5em;
-        width: 5em;
-        display: inline;
-    }
-}
-
-#network-mtu-settings-dialog label,
-#network-mac-settings-dialog label {
-    font-weight: normal;
-}
-
-// Flip the MAC address dropdown to the inner of the modal
-// Bootstrap dropdown cannot escape the PF4 modal and it ends up cropped otherwise
-#network-bond-settings-mac-menu.dropdown-menu {
-    left: unset;
-    right: 0;
+#network-mtu-settings-input {
+    margin-left: 0.5em;
+    width: 5em;
+    display: inline;
 }
 
 // Temporary curtain to hide the conten as it loads
@@ -249,62 +132,22 @@ th {
     z-index: 2000;
 }
 
-#confirm-breaking-change-popup .pficon-warning-triangle-o {
-    float: left;
-    font-size: 36px;
-    margin-top: 6px;
-    margin-right: 20px;
+.pf-l-flex > .network-ip-settings-method {
+    width: 12rem;
 }
 
-// Some old PF3 dialogs are still in use within the networking page
-.modal {
-    @at-root {
-        .modal-title {
-            display: inline-block;
-            background: pink;
-            color: red;
-        }
-
-        .modal-header {
-            button {
-                margin-left: 10px;
-                background: pink;
-                color: red;
-            }
-
-            i.fa {
-                margin-right: 2px;
-                background: pink;
-                color: red;
-            }
-        }
-    }
-}
-
-// Handle form error state highlighting
-// This is done natively by PF4, but this is specifically for widgets on the networking page
-// (Can be removed once ported to PF4)
-.form-control.error {
-    border-color: #cc0000;
-
-    &:hover {
-        border-color: #990000;
+#network-ip-settings-body {
+    .pf-c-form__label {
+        // Don't allow labels to wrap
+        white-space: nowrap
     }
 
-    &:focus {
-        border-color: #990000;
-        -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 6px #ff3333;
-        box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 6px #ff3333;
-    }
-}
-
-// Adjust the "learn more" link in the dialog help link (for bond settings)
-.pf-c-modal-box__header-help .popover-content > a {
-    display: block;
-    padding: var(--pf-global--spacer--md) 0 var(--pf-global--spacer--sm);
-
-    > .fa {
-        margin-right: var(--pf-global--spacer--sm);
+    .remove-button-group {
+        // Move 'Remove' button the the end of the row
+        grid-column: -1;
+        // Move 'Remove' button to the bottom of the line so as to align with the other form fields
+        display: flex;
+        align-items: flex-end;
     }
 }
 
@@ -386,12 +229,6 @@ th {
 }
 
 #delete-confirmation-dialog {
-    .fa-exclamation-triangle {
-        color: var(--pf-global--warning-color--100);
-        font-size: 300%;
-        margin-right: 1rem;
-    }
-
     .delete-confirmation-body {
         display: flex;
     }
@@ -453,10 +290,6 @@ th {
 #add-zone-services-readonly legend {
     padding: 0;
     line-height: 1;
-}
-
-.network-ip-settings-row .pull-right {
-    display: flex;
 }
 
 // Animation for Firewall's add service dialog,

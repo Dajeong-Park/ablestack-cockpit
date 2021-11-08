@@ -6,6 +6,12 @@
     "tools": {
         "setroubleshoot": {
             "label": "SELinux",
+            "docs": [
+                {
+                    "label": "SELinux",
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/selinux-guide/"
+                }
+            ],
             "keywords": [
                 {
                     "matches": ["setroubleshoot", "semanage", "avc"]

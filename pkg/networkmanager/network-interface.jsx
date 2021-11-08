@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
  */
-import $ from 'jquery';
 import cockpit from "cockpit";
 import React, { useContext } from "react";
 import {
@@ -32,38 +31,39 @@ import {
 
 import { ModelContext } from './model-context.jsx';
 import { NetworkInterfaceMembers } from "./network-interface-members.jsx";
+import { NetworkAction } from './dialogs-common.jsx';
 import { NetworkPlots } from "./plots";
+import { fmt_to_fragments } from 'utils.jsx';
 
 import {
-    PageNetworkBondSettings,
-    PageNetworkBridgePortSettings,
-    PageNetworkBridgeSettings,
-    PageNetworkIpSettings,
-    PageNetworkMacSettings,
-    PageNetworkMtuSettings,
-    PageNetworkTeamPortSettings,
-    PageNetworkTeamSettings,
-    PageNetworkVlanSettings,
     array_join,
-    bond_mode_choices,
     choice_title,
     complete_settings,
     connection_settings,
     free_member_connection,
-    ipv4_method_choices, ipv6_method_choices,
     is_managed,
     render_active_connection,
     settings_applier,
     show_unexpected_error,
     syn_click,
-    team_runner_choices, team_watch_choices,
     with_checkpoint,
 } from './interfaces.js';
+import {
+    team_runner_choices,
+    team_watch_choices,
+} from './team.jsx';
+import {
+    bond_mode_choices,
+} from './bond.jsx';
+import {
+    ipv4_method_choices, ipv6_method_choices,
+} from './ip-settings.jsx';
 
 const _ = cockpit.gettext;
 
 export const NetworkInterfacePage = ({
     privileged,
+    operationInProgress,
     usage_monitor,
     plot_state,
     interfaces,
@@ -114,7 +114,7 @@ export const NetworkInterfacePage = ({
             with_checkpoint(model, modify,
                             {
                                 devices: dev ? [dev] : [],
-                                fail_text: cockpit.format(_("Deleting <b>$0</b> will break the connection to the server, and will make the administration UI unavailable."), dev_name),
+                                fail_text: fmt_to_fragments(_("Deleting $0 will break the connection to the server, and will make the administration UI unavailable."), <b>{dev_name}</b>),
                                 anyway_text: cockpit.format(_("Delete $0"), dev_name),
                                 hack_does_add_or_remove: true,
                                 rollback_on_failure: true
@@ -141,7 +141,7 @@ export const NetworkInterfacePage = ({
         with_checkpoint(model, modify,
                         {
                             devices: dev ? [dev] : [],
-                            fail_text: cockpit.format(_("Switching on <b>$0</b> will break the connection to the server, and will make the administration UI unavailable."), dev_name),
+                            fail_text: fmt_to_fragments(_("Switching on $0 will break the connection to the server, and will make the administration UI unavailable."), <b>{dev_name}</b>),
                             anyway_text: cockpit.format(_("Switch on $0"), dev_name)
                         });
     }
@@ -162,7 +162,7 @@ export const NetworkInterfacePage = ({
         with_checkpoint(model, modify,
                         {
                             devices: [dev],
-                            fail_text: cockpit.format(_("Switching off <b>$0</b>  will break the connection to the server, and will make the administration UI unavailable."), dev_name),
+                            fail_text: fmt_to_fragments(_("Switching off $0 will break the connection to the server, and will make the administration UI unavailable."), <b>{dev_name}</b>),
                             anyway_text: cockpit.format(_("Switch off $0"), dev_name)
                         });
     }
@@ -222,20 +222,13 @@ export const NetworkInterfacePage = ({
         let mac_desc;
         if (can_edit_mac) {
             mac_desc = (
-                <Button variant="link" isInline isDisabled={!privileged}
-                        onClick={syn_click(model, setMac)}>
-                    {mac}
-                </Button>
+                <NetworkAction type="mac" iface={iface} buttonText={mac} connectionSettings={iface.MainConnection.Settings} />
             );
         } else {
             mac_desc = mac;
         }
 
         return mac_desc;
-    }
-
-    function setMac() {
-        show_dialog(PageNetworkMacSettings, "#network-mac-settings-dialog");
     }
 
     function renderCarrierStatusRow() {
@@ -270,7 +263,7 @@ export const NetworkInterfacePage = ({
             <DescriptionListGroup>
                 <DescriptionListTerm>{_("Status")}</DescriptionListTerm>
                 <DescriptionListDescription>
-                    {activeConnection ? activeConnection[0].innerHTML : activeConnection}
+                    {activeConnection}
                     {state ? <span>{state}</span> : null}
                 </DescriptionListDescription>
             </DescriptionListGroup>
@@ -326,40 +319,6 @@ export const NetworkInterfacePage = ({
             return parts;
         }
 
-        function configureIpSettings(topic) {
-            PageNetworkIpSettings.topic = topic;
-            show_dialog(PageNetworkIpSettings, '#network-ip-settings-dialog');
-        }
-
-        function configureBondSettings() {
-            show_dialog(PageNetworkBondSettings, '#network-bond-settings-dialog');
-        }
-
-        function configureTeamSettings() {
-            show_dialog(PageNetworkTeamSettings, '#network-team-settings-dialog');
-        }
-
-        function configureTeamPortSettings() {
-            PageNetworkTeamPortSettings.group_settings = group_settings;
-            show_dialog(PageNetworkTeamPortSettings, '#network-teamport-settings-dialog');
-        }
-
-        function configureBridgeSettings() {
-            show_dialog(PageNetworkBridgeSettings, '#network-bridge-settings-dialog');
-        }
-
-        function configureBridgePortSettings() {
-            show_dialog(PageNetworkBridgePortSettings, '#network-bridgeport-settings-dialog');
-        }
-
-        function configureVlanSettings() {
-            show_dialog(PageNetworkVlanSettings, '#network-vlan-settings-dialog');
-        }
-
-        function configureMtuSettings() {
-            show_dialog(PageNetworkMtuSettings, '#network-mtu-settings-dialog');
-        }
-
         function renderAutoconnectRow() {
             if (settings.connection.autoconnect !== undefined) {
                 return (
@@ -391,11 +350,13 @@ export const NetworkInterfacePage = ({
                 <DescriptionListGroup>
                     <DescriptionListTerm>{title}</DescriptionListTerm>
                     <DescriptionListDescription>
-                        {link_text.length && <span className="network-interface-settings-text">
-                            {link_text}
-                        </span>}
-                        {privileged &&
-                        <Button variant="link" isInline onClick={syn_click(model, configure)}>{_("edit")}</Button>}
+                        {link_text.length
+                            ? <span className="network-interface-settings-text">
+                                {link_text}
+                            </span>
+                            : null}
+                        {privileged
+                            ? (typeof configure === 'function' ? <Button variant="link" isInline onClick={syn_click(model, configure)}>{_("edit")}</Button> : configure) : null}
                     </DescriptionListDescription>
                 </DescriptionListGroup>
             );
@@ -405,8 +366,8 @@ export const NetworkInterfacePage = ({
             if (!settings[topic])
                 return null;
 
-            return renderSettingsRow(title, renderIpSettings(topic),
-                                     function () { configureIpSettings(topic) });
+            const configure = <NetworkAction type={topic} iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(title, renderIpSettings(topic), configure);
         }
 
         function renderMtuSettingsRow() {
@@ -425,7 +386,8 @@ export const NetworkInterfacePage = ({
             else
                 addRow(_("Automatic"), options);
 
-            return renderSettingsRow(_("MTU"), rows, configureMtuSettings);
+            const configure = <NetworkAction type="mtu" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("MTU"), rows, configure);
         }
 
         function render_connection_link(con, key) {
@@ -471,7 +433,8 @@ export const NetworkInterfacePage = ({
             if (parts.length > 0)
                 rows.push(parts.join(", "));
 
-            return renderSettingsRow(_("Bond"), rows, configureBondSettings);
+            const configure = <NetworkAction type="bond" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("Bond"), rows, configure);
         }
 
         function renderTeamSettingsRow() {
@@ -494,7 +457,9 @@ export const NetworkInterfacePage = ({
 
             if (parts.length > 0)
                 rows.push(parts.join(", "));
-            return renderSettingsRow(_("Team"), rows, configureTeamSettings);
+
+            const configure = <NetworkAction type="team" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("Team"), rows, configure);
         }
 
         function renderTeamPortSettingsRow() {
@@ -522,7 +487,9 @@ export const NetworkInterfacePage = ({
 
             if (parts.length > 0)
                 rows.push(parts.join(", "));
-            return renderSettingsRow(_("Team port"), rows, configureTeamPortSettings);
+
+            const configure = <NetworkAction type="teamport" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("Team port"), rows, configure);
         }
 
         function renderBridgeSettingsRow() {
@@ -548,7 +515,8 @@ export const NetworkInterfacePage = ({
                     addRow(_("Maximum message age $max_age"), options);
             }
 
-            return renderSettingsRow(_("Bridge"), rows, configureBridgeSettings);
+            const configure = <NetworkAction type="bridge" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("Bridge"), rows, configure);
         }
 
         function renderBridgePortSettingsRow() {
@@ -569,7 +537,8 @@ export const NetworkInterfacePage = ({
             if (options.hairpin_mode)
                 addRow(_("Hairpin mode"));
 
-            return renderSettingsRow(_("Bridge port"), rows, configureBridgePortSettings);
+            const configure = <NetworkAction type="bridgeport" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("Bridge port"), rows, configure);
         }
 
         function renderVlanSettingsRow() {
@@ -586,8 +555,8 @@ export const NetworkInterfacePage = ({
             addRow(_("Parent $parent"), options);
             addRow(_("ID $id"), options);
 
-            return renderSettingsRow(_("VLAN"), rows,
-                                     configureVlanSettings);
+            const configure = <NetworkAction type="vlan" iface={iface} connectionSettings={settings} />;
+            return renderSettingsRow(_("VLAN"), rows, configure);
         }
 
         return [
@@ -669,30 +638,6 @@ export const NetworkInterfacePage = ({
                                      privileged={privileged} />);
     }
 
-    function show_dialog(dialog, id) {
-        const con = iface.MainConnection;
-
-        function reactivateConnection() {
-            if (con && dev && dev.ActiveConnection && dev.ActiveConnection.Connection === con) {
-                if (con.Settings.connection.interface_name &&
-                    con.Settings.connection.interface_name != dev.Interface) {
-                    return dev.disconnect().then(function () { return con.activate(null, null) })
-                            .fail(show_unexpected_error);
-                } else {
-                    return con.activate(dev, null)
-                            .fail(show_unexpected_error);
-                }
-            }
-        }
-
-        dialog.model = model;
-        dialog.connection = con;
-        dialog.ghost_settings = ghostSettings;
-        dialog.apply_settings = settings_applier(model, dev, con);
-        dialog.done = reactivateConnection;
-        $(id).trigger('show');
-    }
-
     function createGhostConnectionSettings() {
         const settings = {
             connection: {
@@ -743,6 +688,7 @@ export const NetworkInterfacePage = ({
         <Page groupProps={{ sticky: 'top' }}
               isBreadcrumbGrouped
               id="network-interface"
+              data-test-wait={operationInProgress}
               breadcrumb={
                   <Breadcrumb>
                       <BreadcrumbItem to='#'>

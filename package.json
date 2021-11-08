@@ -3,22 +3,19 @@
   "description": "Cockpit isn't a Node package, these are devel time deps, not needed to build tarball either",
   "private": true,
   "dependencies": {
-    "@patternfly/patternfly": "4.132.2",
-    "@patternfly/react-core": "4.152.4",
-    "@patternfly/react-styles": "4.11.13",
-    "@patternfly/react-table": "4.29.58",
+    "@patternfly/patternfly": "4.151.4",
+    "@patternfly/react-core": "4.168.11",
+    "@patternfly/react-icons": "4.19.11",
+    "@patternfly/react-styles": "4.18.11",
+    "@patternfly/react-table": "4.37.11",
     "@redhat/redhat-font": "git+https://github.com/RedHatOfficial/RedHatFont.git#2.2.0",
-    "await-mutex": "1.0.2",
     "bootstrap": "3.4.1",
-    "bootstrap-select": "1.13.18",
     "deep-equal": "2.0.5",
     "jquery": "3.5.1",
     "js-sha1": "0.6.0",
     "js-sha256": "0.9.0",
     "json-stable-stringify-without-jsonify": "1.0.1",
-    "mustache": "4.2.0",
     "patternfly": "3.59.5",
-    "patternfly-react": "2.39.17",
     "prop-types": "15.7.2",
     "qunit": "2.17.2",
     "qunit-tap": "1.5.1",
@@ -74,7 +71,7 @@
     "webpack-cli": "^4.7.0"
   },
   "scripts": {
-    "eslint": "eslint --ext .js --ext .jsx pkg/ --rule 'no-var: warn'",
+    "eslint": "eslint --ext .js --ext .jsx pkg/",
     "eslint:fix": "eslint --fix --ext .js --ext .jsx pkg/"
   }
 }

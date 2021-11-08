@@ -6,6 +6,12 @@
     "tools": {
         "index": {
             "label": "Applications",
+            "docs": [
+                {
+                    "label": "Applications",
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/application-guide/"
+                }
+            ],
             "keywords": [
                 {
                     "matches": ["plugin", "apps", "addon", "add-on", "install", "extension"]

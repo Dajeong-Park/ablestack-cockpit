@@ -18,6 +18,7 @@
 # along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
 
 import parent
+import json
 from netlib import *
 from testlib import *
 
@@ -32,7 +33,7 @@ class TestTeam(NetworkCase):
 
         self.login_and_go("/network")
 
-        b.wait_attr("#networking-add-team", "data-test-stable", "true")
+        b.wait_visible("button:contains('Add team')")
 
         iface1 = "cockpit1"
         self.add_veth(iface1, dhcp_cidr="10.111.113.1/24", dhcp_range=['10.111.113.2', '10.111.113.254'])
@@ -45,18 +46,21 @@ class TestTeam(NetworkCase):
 
         # team them
         b.click("button:contains('Add team')")
-        b.wait_popup("network-team-settings-dialog")
+        b.wait_visible("#network-team-settings-dialog")
 
         # wait until dialog initialized
-        b.wait_visible("#network-team-settings-close-button")
+        b.wait_visible("#network-team-settings-dialog > button[aria-label=Close]")
         b.wait_in_text("#network-team-settings-body", "cockpit2")
-        b.assert_pixels("#network-team-settings-dialog .pf-c-modal-box", "networking-team-settings-dialog")
+        b.assert_pixels("#network-team-settings-dialog", "networking-team-settings-dialog")
 
-        b.set_val("#network-team-settings-interface-name-input", "tteam")
+        b.set_input_text("#network-team-settings-interface-name-input", "tteam")
         b.set_checked("input[data-iface='%s']" % iface1, True)
         b.set_checked("input[data-iface='%s']" % iface2, True)
         b.click("#network-team-settings-dialog button:contains('Apply')")
-        b.wait_popdown("network-team-settings-dialog")
+        b.wait_not_present("#network-team-settings-dialog")
+
+        b.wait_attr("#networking", "data-test-wait", "false")
+        b.wait(lambda: 'nmcli con show | grep tteam')
         b.wait_visible("#networking-interfaces tr[data-interface='tteam']")
 
         # Check that the configuration file has the expected sane name
@@ -97,6 +101,7 @@ class TestTeam(NetworkCase):
 
     def testActive(self):
         b = self.browser
+        m = self.machine
 
         self.login_and_go("/network")
         b.wait_visible("#networking")
@@ -110,17 +115,39 @@ class TestTeam(NetworkCase):
         # get the same IP as the active interface, but it should get a valid DHCP IP.
 
         b.click("button:contains('Add team')")
-        b.wait_popup("network-team-settings-dialog")
-        b.set_val("#network-team-settings-interface-name-input", "tteam")
+        b.wait_visible("#network-team-settings-dialog")
+        b.set_input_text("#network-team-settings-interface-name-input", "tteam")
         b.set_checked("input[data-iface='%s']" % iface, True)
         b.click("#network-team-settings-dialog button:contains('Apply')")
-        b.wait_popdown("network-team-settings-dialog")
+        b.wait_not_present("#network-team-settings-dialog")
+
+        b.wait_attr("#networking", "data-test-wait", "false")
+        b.wait(lambda: 'nmcli con show | grep tteam')
 
         # Check that it has the interface and the right IP address
         self.select_iface('tteam')
         b.wait_visible("#network-interface")
         b.wait_visible("#network-interface-members tr[data-interface='%s']" % iface)
         b.wait_in_text("#network-interface .pf-c-card:contains('tteam')", "10.111")
+
+        # Check team port
+        b.click("#network-interface-members button:contains(cockpit1)")
+        b.click("#networking-edit-teamport")
+        b.wait_visible("#network-team-port-settings-dialog")
+        b.set_input_text("#network-team-port-settings-activebackup-prio-input", "10")
+        b.set_checked("#network-team-port-settings-activebackup-sticky-input", True)
+        b.click("#network-team-port-settings-apply")
+        b.wait_not_present("#network-team-port-settings-dialog")
+
+        b.wait_attr("#network-interface", "data-test-wait", "false")
+
+        # Confirm that team port settings are applied
+        dump_config_cmd = "teamdctl tteam port config dump cockpit1 || true"
+        b.wait(lambda: "sticky" in m.execute(dump_config_cmd))
+        cockpit1_config = m.execute(dump_config_cmd)
+        team_port_config = json.loads(cockpit1_config)
+        self.assertEqual(team_port_config.get("prio"), "10")
+        self.assertTrue(team_port_config.get("sticky"))
 
 
 if __name__ == '__main__':

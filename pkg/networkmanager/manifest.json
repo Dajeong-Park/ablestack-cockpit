@@ -11,23 +11,23 @@
             "docs": [
                 {
                     "label": "Managing networking bonds",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/configuring-network-bonds-using-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/networking-guide/#_1"
                 },
                 {
                     "label": "Managing networking teams",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/configuring-network-teams-using-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/networking-guide/#_8"
                 },
                 {
                     "label": "Managing networking bridges",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/configuring-network-bridges-in-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/networking-guide/#_15"
                 },
                 {
                     "label": "Managing VLANs",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/configuring-vlans-in-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/networking-guide/#vlan"
                 },
                 {
                     "label": "Managing firewall",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/managing-firewall-using-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/networking-guide/#_21"
                 }
             ],
             "keywords": [

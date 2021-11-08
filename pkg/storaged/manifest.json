@@ -11,35 +11,35 @@
             "docs": [
                 {
                     "label": "Managing partitions",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/managing-partitions-using-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#_2"
                 },
                 {
                     "label": "Managing NFS mounts",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/managing-nfs-mounts-in-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#nfs"
                 },
                 {
                     "label": "Managing RAIDs",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/managing-redundant-arrays-of-independent-disks-in-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#_3"
                 },
                 {
                     "label": "Managing LVMs",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/using-the-web-console-for-configuring-lvm-logical-volumes_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#lvm"
                 },
                 {
                     "label": "Managing physical drives",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/using-the-web-console-for-changing-physical-drives-in-volume-groups_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#_4"
                 },
                 {
                     "label": "Managing VDOs",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/using-the-web-console-for-managing-virtual-data-optimizer-volumes_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#vdo"
                 },
                 {
                     "label": "Using LUKS encryption",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/locking-data-with-luks-password-in-the-rhel-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#luks"
                 },
                 {
                     "label": "Using Tang server",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/configuring-automated-unlocking-using-a-tang-key-in-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/storage-guide/#tang"
                 }
             ],
             "keywords": [
@@ -56,7 +56,10 @@
             "opensuse": "nfs-client", "opensuse-leap": "nfs-client",
             "debian": "nfs-common", "ubuntu": "nfs-common"
         },
-        "vdo_package": { "rhel": "vdo", "centos": "vdo" }
+        "vdo_package": { "rhel": "vdo", "centos": "vdo" },
+        "stratis_package": { "fedora": "stratisd",
+                             "centos": "stratisd"
+                           }
     },
     "content-security-policy": "img-src 'self' data:"
 }

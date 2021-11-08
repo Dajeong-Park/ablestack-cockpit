@@ -182,7 +182,7 @@ OnCalendar=daily
         b.click('#display-language-modal li[data-value=de-de] button')
         b.click("#display-language-modal footer button.pf-m-primary")
         b.expect_load()
-        if b.cdp.browser in ["chrome", "chromium"]:
+        if b.cdp.browser.name == "chromium":
             # HACK: work around language switching in Chrome not working in current session (issue #8160)
             b.reload(ignore_cache=True)
         b.wait_visible("#content")
@@ -226,15 +226,6 @@ OnCalendar=daily
         # Glade section
         self.assertEqual(b.text("#translatable-glade"), "Leer")
         self.assertEqual(b.text("#translatable-glade-context"), "Leeren")
-
-        # Mustache section
-        self.assertEqual(b.text("#translatable-mustache"), "Benutzer")
-        self.assertEqual(b.text("#translate-mustache"), "Speicher")
-        self.assertEqual(b.text("#translate-mustache-yes"), "Konten")
-        self.assertEqual(b.attr("#translate-mustache-title", "title"), "Fehler")
-        self.assertEqual(b.text("#translate-mustache-title"), "User")
-        self.assertEqual(b.attr("#translate-mustache-yes-title", "title"), "Fehler")
-        self.assertEqual(b.text("#translate-mustache-yes-title"), "Benutzer")
 
         # Javascript
         self.assertEqual(b.text("#underscore-empty"), "Leer")
@@ -285,7 +276,7 @@ OnCalendar=daily
             b.click("#display-language-modal li[data-value=%s] button" % language)
             b.click("#display-language-modal footer button.pf-m-primary")
             b.expect_load()
-            if b.cdp.browser in ["chrome", "chromium"]:
+            if b.cdp.browser.name == "chromium":
                 # HACK: work around language switching in Chrome not working in current session (issue #8160)
                 b.reload(ignore_cache=True)
             b.wait_visible("#content")
@@ -337,7 +328,7 @@ OnCalendar=daily
         b.click('#display-language-modal li[data-value=pt-br] button')
         b.click('#display-language-modal footer button.pf-m-primary')
         b.expect_load()
-        if b.cdp.browser in ["chrome", "chromium"]:
+        if b.cdp.browser.name == "chromium":
             # HACK: work around language switching in Chrome not working in current session (issue #8160)
             b.reload(ignore_cache=True)
         b.wait_visible('#content')
@@ -371,15 +362,6 @@ OnCalendar=daily
         # Glade section
         self.assertEqual(b.text('#translatable-glade'), 'Vazio')
         self.assertEqual(b.text('#translatable-glade-context'), 'Vazio')
-
-        # Mustache section
-        self.assertEqual(b.text('#translatable-mustache'), u'Usuário')
-        self.assertEqual(b.text('#translate-mustache'), u'Memória')
-        self.assertEqual(b.text('#translate-mustache-yes'), 'Contas')
-        self.assertEqual(b.attr('#translate-mustache-title', 'title'), 'Erro')
-        self.assertEqual(b.text('#translate-mustache-title'), 'User')
-        self.assertEqual(b.attr('#translate-mustache-yes-title', 'title'), 'Erro')
-        self.assertEqual(b.text('#translate-mustache-yes-title'), u'Usuário')
 
         # Javascript
         self.assertEqual(b.text('#underscore-empty'), 'Vazio')
@@ -544,7 +526,7 @@ OnCalendar=daily
         b.click('#display-language-modal li[data-value=de-de] button')
         b.click("#display-language-modal footer button.pf-m-primary")
         b.expect_load()
-        if b.cdp.browser in ["chrome", "chromium"]:
+        if b.cdp.browser.name == "chromium":
             # HACK: work around language switching in Chrome not working in current session (issue #8160)
             b.reload(ignore_cache=True)
         b.wait_visible("#content")

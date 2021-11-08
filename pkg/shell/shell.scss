@@ -101,11 +101,6 @@ html.index-page body {
     padding-top: 120px;
 }
 
-/* workaround: make text red for select if contained in has-error, not in patternfly */
-.has-error > .bootstrap-select > button > span {
-    color: #A94442;
-}
-
 /* System information */
 
 #systime-date-input,
@@ -133,121 +128,6 @@ iframe.container-frame {
     display: none;
     border: none;
     width: 100%;
-}
-
-/* Credentials dialog */
-#ssh-file-container, #ssh-file-add {
-  display: inline-block;
-}
-
-#credentials-dialog {
-    .pf-c-modal-box__body {
-        // Turn off modal scrolling
-        overflow: visible;
-    }
-
-    .modal-body {
-        display: grid;
-        grid-template-rows: auto 1fr;
-        // Full screen minus the button, heading, and padding
-        max-height: calc(100vh - (var(--pf-global--spacer--md) * 11));
-        grid-gap: var(--pf-global--spacer--md);
-    }
-
-    .table-scrollable {
-        // Scroll the table content instead
-        overflow: auto;
-    }
-
-    table {
-        width: 100%;
-
-        thead tr.load-custom-key {
-            td.has-error div.dialog-error {
-                display: block;
-            }
-
-            td {
-                padding-left: 15px;
-                padding-bottom: 15px;
-                padding-top: 0;
-
-                .dropdown-menu {
-                    max-height: 100px;
-                }
-
-                input {
-                    width: 500px;
-                }
-
-                button {
-                    padding-right: 10px;
-                    padding-left: 10px;
-                }
-
-                span.input-group-btn {
-                    border-left: 2px solid transparent;
-                }
-
-                div.dialog-error {
-                    display: none;
-                }
-            }
-        }
-
-        tbody.ssh-add-key-body {
-            display: none;
-        }
-
-        tbody.ssh-add-key-body.unlock {
-            display: table-row-group;
-        }
-
-        dd, dt {
-            padding-top: 3px;
-            min-height: 26px;
-        }
-
-        dt {
-            min-width: 80px;
-            max-width: 100px;
-        }
-
-        input[type='password'] {
-            width: 300px;
-        }
-
-
-        textarea {
-            color: var(--pf-global--palette--black-850) !important;
-        }
-
-        dt label {
-            margin-bottom: 0px;
-        }
-    }
-
-    thead td {
-        padding-left: 15px;
-        padding-bottom: 15px;
-    }
-
-    tbody .credential-unlock {
-        display: none;
-    }
-
-    tbody.unlock .credential-panel {
-        display: none !important;
-    }
-
-    tbody.unlock .credential-unlock {
-        display: block;
-    }
-}
-
-.credential-data {
-    overflow-wrap: break-word;
-    word-break: break-all;
 }
 
 .spinner-white {

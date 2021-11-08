@@ -20,16 +20,42 @@
 import cockpit from "cockpit";
 
 import React from "react";
-import { Button, Flex } from "@patternfly/react-core";
+import { Button, Flex, Spinner } from "@patternfly/react-core";
+import {
+    BugIcon,
+    CheckIcon,
+    EnhancementIcon,
+    ExclamationCircleIcon,
+    InfoCircleIcon,
+    SecurityIcon,
+    WarningTriangleIcon,
+} from '@patternfly/react-icons';
+
 import { page_status } from "notifications";
 
-function icon_class_for_type(type) {
+function icon_for_type(type) {
     if (type == "error")
-        return 'fa fa-exclamation-circle';
+        return <ExclamationCircleIcon className="ct-exclamation-circle" />;
     else if (type == "warning")
-        return 'fa fa-exclamation-triangle';
+        return <WarningTriangleIcon className="ct-exclamation-triangle" />;
     else
-        return 'fa fa-info-circle';
+        return <InfoCircleIcon className="ct-info-circle" />;
+}
+
+function get_pficon(name) {
+    // set data-pficon for the tests
+    if (name == "security")
+        return <SecurityIcon data-pficon={name} />;
+    if (name == "enhancement")
+        return <EnhancementIcon data-pficon={name} />;
+    if (name == "bug")
+        return <BugIcon data-pficon={name} />;
+    if (name == "check")
+        return <CheckIcon color="green" data-pficon={name} />;
+    if (name == "spinner")
+        return <Spinner isSVG size="sm" data-pficon={name} />;
+
+    throw new Error(`get_pficon(): unknown icon name ${name}`);
 }
 
 export class PageStatusNotifications extends React.Component {
@@ -64,13 +90,17 @@ export class PageStatusNotifications extends React.Component {
                                      onClick={ ev => { ev.preventDefault(); cockpit.jump("/" + page) } }>{status.title}</Button>;
                 }
 
-                let icon = status.details && status.details.icon;
-                if (!icon)
-                    icon = icon_class_for_type(status.type);
+                let icon;
+                if (status.details && status.details.icon)
+                    icon = <span className={status.details.icon} />;
+                else if (status.details && status.details.pficon)
+                    icon = get_pficon(status.details.pficon);
+                else
+                    icon = icon_for_type(status.type);
                 return (
                     <li id={ "page_status_notification_" + page.replace('/', '_') } key={page}>
                         <Flex flexWrap={{ default: 'nowrap' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                            <span className={icon} />
+                            {icon}
                             {action}
                         </Flex>
                     </li>);

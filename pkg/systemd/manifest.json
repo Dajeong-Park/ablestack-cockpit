@@ -12,7 +12,7 @@
             "docs": [
                 {
                     "label": "Configuring system settings",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/getting-started-with-the-rhel-8-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/overview-guide/"
                 }
             ],
             "keywords": [
@@ -24,7 +24,7 @@
                     "goto": "/system/hwinfo"
                 },
                 {
-                    "matches": ["graphs", "metrics", "history", "pcp", "cpu", "memory", "disks", "network", "cgroups"],
+                    "matches": ["graphs", "metrics", "history", "pcp", "cpu", "memory", "disks", "network", "cgroups", "performance"],
                     "goto": "/metrics"
                 }
             ]
@@ -35,7 +35,7 @@
             "docs": [
                 {
                     "label": "Managing services",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/managing-services-in-the-web-console_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/service-guide/"
                 }
             ],
             "keywords": [
@@ -54,7 +54,7 @@
             "docs": [
                 {
                     "label": "Reviewing logs",
-                    "url": "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_systems_using_the_rhel_8_web_console/reviewing-logs_system-management-using-the-rhel-8-web-console"
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/log-guide/"
                 }
             ],
             "keywords": [
@@ -72,6 +72,12 @@
     "tools": {
         "terminal": {
             "label": "Terminal",
+            "docs": [
+                {
+                    "label": "Terminal",
+                    "url": "https://docs.ablecloud.io/1.0%20Allo/administration/cube/terminal-guide/"
+                }
+            ],
             "keywords": [
                 {
                     "matches": ["console", "command", "bash", "shell"]

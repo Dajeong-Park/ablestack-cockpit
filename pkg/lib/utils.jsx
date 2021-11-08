@@ -1,7 +1,7 @@
 /*
  * This file is part of Cockpit.
  *
- * Copyright (C) 2017 Red Hat, Inc.
+ * Copyright (C) 2018 Red Hat, Inc.
  *
  * Cockpit is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -18,14 +18,16 @@
  */
 
 import React from "react";
-import ReactDOM from "react-dom";
 
-import { FileAutoComplete } from "cockpit-components-file-autocomplete.jsx";
+export function fmt_to_fragments(fmt) {
+    const args = Array.prototype.slice.call(arguments, 1);
 
-export function render(rootElement) {
-    ReactDOM.render(<FileAutoComplete id='ssh-key-path' />, rootElement);
-}
+    function replace(part) {
+        if (part[0] == "$") {
+            return args[parseInt(part.slice(1))];
+        } else
+            return part;
+    }
 
-export function remove(rootElement) {
-    ReactDOM.unmountComponentAtNode(rootElement);
+    return React.createElement.apply(null, [React.Fragment, { }].concat(fmt.split(/(\$[0-9]+)/g).map(replace)));
 }

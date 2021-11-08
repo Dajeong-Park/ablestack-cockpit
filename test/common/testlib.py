@@ -284,7 +284,7 @@ class Browser:
 
     # TODO: Unify them so we can have only one
     def key_press(self, keys, modifiers=0, use_ord=False):
-        if self.cdp.browser == "chromium":
+        if self.cdp.browser.name == "chromium":
             self.key_press_chromium(keys, modifiers, use_ord)
         else:
             self.key_press_firefox(keys, modifiers, use_ord)
@@ -345,7 +345,7 @@ class Browser:
         else:
             self.wait_text(f"{selector} .pf-c-select__toggle-text", value)
 
-    def set_input_text(self, selector, val, append=False, value_check=True):
+    def set_input_text(self, selector, val, append=False, value_check=True, blur=True):
         self.focus(selector)
         if not append:
             self.key_press("a", 2)  # Ctrl + a
@@ -353,6 +353,8 @@ class Browser:
             self.key_press("\b")  # Backspace
         else:
             self.key_press(val)
+        if blur:
+            self.blur(selector)
 
         if value_check:
             self.wait_val(selector, val)
@@ -1124,6 +1126,9 @@ class MachineCase(unittest.TestCase):
         self.restore_file("/etc/passwd")
         self.restore_file("/etc/group")
         self.restore_file("/etc/shadow")
+        self.restore_file("/etc/gshadow")
+        self.restore_file("/etc/subuid")
+        self.restore_file("/etc/subgid")
         home_dirs = m.execute("ls /home").strip().split()
 
         def cleanup_home_dirs():
@@ -1414,7 +1419,7 @@ class MachineCase(unittest.TestCase):
         """
 
         # Only test Axe on chromium browsers
-        if self.browser.cdp.browser != "chromium":
+        if self.browser.cdp.browser.name != "chromium":
             return
 
         if not checkRunAxe():

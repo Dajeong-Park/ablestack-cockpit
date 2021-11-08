@@ -26,12 +26,15 @@ import { create_mdraid, mdraid_rows } from "./mdraids-panel.jsx";
 import { create_vgroup, vgroup_rows } from "./vgroups-panel.jsx";
 import { vdo_feature, create_vdo, vdo_rows } from "./vdos-panel.jsx";
 import { StorageBarMenu, StorageMenuItem } from "./storage-controls.jsx";
+import { stratis_feature, create_stratis_pool, stratis_rows } from "./stratis-panel.jsx";
+import { dialog_open } from "./dialog.jsx";
 
 const _ = cockpit.gettext;
 
 export class ThingsPanel extends React.Component {
     render() {
         const { client } = this.props;
+        const self = this;
 
         // See OptionalPanel for a description of the "feature"
         // argument here.
@@ -47,7 +50,15 @@ export class ThingsPanel extends React.Component {
                 if (!feature_enabled) {
                     install_dialog(required_package, feature.dialog_options).then(
                         () => {
-                            feature.enable().then(action);
+                            feature.enable()
+                                    .then(action)
+                                    .catch(error => {
+                                        dialog_open({
+                                            Title: _("Error"),
+                                            Body: error.toString()
+                                        });
+                                        self.setState({});
+                                    });
                         },
                         () => null /* ignore cancel */);
                 } else {
@@ -65,14 +76,16 @@ export class ThingsPanel extends React.Component {
         const actions = (
             <StorageBarMenu id="devices-menu" label={_("Create devices")} menuItems={[
                 menu_item(null, _("Create RAID device"), () => create_mdraid(client)),
-                menu_item(lvm2_feature, _("Create volume group"), () => create_vgroup(client)),
-                menu_item(vdo_feature(client), _("Create VDO device"), () => create_vdo(client))].filter(item => item !== null)} />
+                menu_item(lvm2_feature, _("Create LVM2 volume group"), () => create_vgroup(client)),
+                menu_item(vdo_feature(client), _("Create VDO device"), () => create_vdo(client)),
+                menu_item(stratis_feature(client), _("Create Stratis pool"), () => create_stratis_pool(client))].filter(item => item !== null)} />
         );
 
         const devices = [].concat(
             mdraid_rows(client),
             vgroup_rows(client),
-            vdo_rows(client));
+            vdo_rows(client),
+            stratis_rows(client));
 
         return (
             <SidePanel id="devices"

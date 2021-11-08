@@ -99,21 +99,35 @@ class CommonTests:
 
         wait_number_domains(0)
 
+        def set_address():
+            # old realmd/IPA don't support realmd auto-detection yet
+            if m.image.startswith("rhel-8") or m.image in ["centos-8-stream", "ubuntu-2004"]:
+                b.wait_attr("#realms-op-address", "data-discover", "done")
+                b.wait_val(self.op_address, "")
+                b.wait_not_present("#realms-op-address-helper")
+                b.set_input_text(self.op_address, "cockpit.lan")
+            else:
+                # on current OSes, domain and suggested admin get auto-detected
+                b.wait_val(self.op_address, "cockpit.lan")
+
         # Join cockpit.lan
         b.click(self.domain_sel)
-        b.wait_popup("realms-op")
-        b.set_val(self.op_address, "cockpit.lan")
-        with b.wait_timeout(300):
-            b.wait_text(".realms-op-address-error", "Contacted domain")
-        b.wait_attr(self.op_admin, "placeholder", 'e.g. "%s"' % self.admin_user)
-        b.set_val(self.op_admin, self.admin_user)
-        b.set_val(self.op_admin_password, self.admin_password)
-        b.wait_not_visible(".realms-op-leave-only-row")
-        b.click(".realms-op-apply")
+        b.wait_popup("realms-join-dialog")
+        set_address()
+        b.wait_text("#realms-op-address-helper", "Contacted domain")
+        # admin gets auto-detected
+        b.wait_val(self.op_admin, self.admin_user)
+        b.set_input_text(self.op_admin_password, self.admin_password)
+        b.assert_pixels("#realms-join-dialog", "realm-join")
+        b.click(f"#realms-join-dialog button{self.primary_btn_class}")
         # running operation cannot be cancelled any more
-        b.wait_visible(".realms-op-cancel:disabled")
+        b.wait_visible("#realms-join-dialog button.pf-m-link:disabled")
+        # disables inputs during join
+        b.wait_visible("#realms-op-address:disabled")
+        b.wait_visible("#realms-op-admin:disabled")
+        b.wait_visible("#realms-op-admin-password:disabled")
         with b.wait_timeout(300):
-            b.wait_popdown("realms-op")
+            b.wait_not_present("#realms-join-dialog")
 
         # Check that this has worked
         wait_number_domains(1)
@@ -163,20 +177,21 @@ class CommonTests:
         b.login_and_go("/system")
         b.wait_in_text(self.domain_sel, "cockpit.lan")
         b.click(self.domain_sel)
-        b.wait_popup("realms-op")
+        b.wait_popup("realms-leave-dialog")
         b.wait_text("#realms-op-info-domain", "cockpit.lan")
         b.wait_text("#realms-op-info-login-format", "username@cockpit.lan")
         b.wait_text("#realms-op-info-server-sw", self.expected_server_software)
         b.wait_text("#realms-op-info-client-sw", "sssd")
         # leave button should be hidden behind expander by default
-        b.wait_not_visible("button.realms-op-leave")
-        b.wait_not_visible("#realms-op-alert")
-        b.click("#realms-op-leave-toggle")
-        b.wait_visible("#realms-op-alert")
-        b.wait_visible("button.realms-op-leave")
-        b.click(".realms-op-leave")
+        b.wait_not_visible("#realms-op-leave")
+        b.wait_not_visible("#realms-leave-dialog .pf-c-alert")
+        b.click("#realms-leave-dialog .pf-c-expandable-section__toggle")
+        b.wait_visible("#realms-leave-dialog .pf-c-alert")
+        # caret expander is animated and not reproducible even after a sleep
+        b.assert_pixels("#realms-leave-dialog", "realm-leave", [".pf-c-expandable-section__toggle-icon"])
+        b.click("#realms-op-leave")
 
-        b.wait_popdown("realms-op")
+        b.wait_not_present("#realms-leave-dialog")
         wait_number_domains(0)
         # re-enables hostname changing
         b.wait_visible("#system_information_hostname_button:not([disabled])")
@@ -192,35 +207,32 @@ class CommonTests:
         while tries < 3:
             # Send a wrong password
             b.click(self.domain_sel)
-            b.wait_popup("realms-op")
-            b.set_val(self.op_address, "cockpit.lan")
-            b.wait_attr(self.op_admin, "placeholder", 'e.g. "%s"' % self.admin_user)
-            b.set_val(self.op_admin, self.admin_user)
-            b.set_val(self.op_admin_password, "foo")
-            b.click(".realms-op-apply")
-            b.wait_text_not(".realms-op-message", "")
-            error = b.text(".realms-op-message")
-            b.wait_not_visible(".realms-op-leave-only-row")
+            b.wait_popup("realms-join-dialog")
+            set_address()
+            b.wait_val(self.op_admin, self.admin_user)
+            b.set_input_text(self.op_admin_password, "foo")
+            b.click(f"#realms-join-dialog button{self.primary_btn_class}")
+            b.wait_text_not(".realms-op-error", "")
+            error = b.text(".realms-op-error")
             if "Already running another action" not in error:
                 # "More" link is part of the message component, so this looks a little funny here
                 if self.expected_server_software == 'active-directory':
-                    self.assertEqual(error, "Failed to join the domain More")
+                    self.assertEqual(error, "Danger alert:Failed to join the domainDetails")
                 else:
-                    self.assertEqual(error, "Password is incorrect More")
+                    self.assertEqual(error, "Danger alert:Password is incorrectDetails")
                 # "More" should be visible, and diagnostics not shown by default
-                b.wait_not_visible(".realms-op-diagnostics")
-                b.click(".realms-op-more-diagnostics")
-                # that hides the initial message and the More link
-                b.wait_not_visible(".realms-op-message")
-                b.wait_not_visible(".realms-op-more-diagnostics")
+                b.wait_not_present(".realms-op-diagnostics")
+                b.click(".realms-op-error button")
+                # that hides the Details link
+                b.wait_not_present(".realms-op-error button")
                 # and shows the raw log
                 b.wait_visible(".realms-op-diagnostics")
                 if self.expected_server_software == 'active-directory':
                     b.wait_in_text(".realms-op-diagnostics", "Couldn't authenticate as: Administrator@COCKPIT.LAN")
                 else:
                     b.wait_in_text(".realms-op-diagnostics", "ipa-client-install command failed")
-            b.click(".realms-op-cancel")
-            b.wait_popdown("realms-op")
+            b.click("#realms-join-dialog button.pf-m-link")
+            b.wait_not_present("#realms-join-dialog")
             if "Already running another action" not in error:
                 break
             print("Another operation running, retry")
@@ -229,14 +241,28 @@ class CommonTests:
 
         # Try to join a non-existing domain
         b.click(self.domain_sel)
-        b.wait_popup("realms-op")
-        b.set_val(self.op_address, "NOPE")
-        b.wait_text(".realms-op-address-error", "Domain NOPE could not be contacted")
-        b.wait_not_visible(".realms-op-address-spinner")
-        b.click(".realms-op-apply")
-        b.wait_not_visible(".realms-op-address-spinner")
-        b.click(".realms-op-cancel")
-        b.wait_popdown("realms-op")
+        b.wait_popup("realms-join-dialog")
+        # wait for auto-detection
+        set_address()
+        b.set_input_text(self.op_address, "NOPE")
+        b.wait_text("#realms-op-address-helper", "Domain could not be contacted")
+        b.wait_visible(f"#realms-join-dialog button{self.primary_btn_class}:disabled")
+        b.click("#realms-join-dialog button.pf-m-link")
+        b.wait_not_present("#realms-join-dialog")
+
+        # Join a domain with the server as address (input differs from domain name)
+        b.click(self.domain_sel)
+        b.wait_popup("realms-join-dialog")
+        b.wait_attr("#realms-op-address", "data-discover", "done")
+        b.set_input_text(self.op_address, "f0.cockpit.lan")
+        b.wait_text("#realms-op-address-helper", "Contacted domain")
+        # admin gets auto-detected
+        b.wait_val(self.op_admin, self.admin_user)
+        b.set_input_text(self.op_admin_password, self.admin_password)
+        b.click(f"#realms-join-dialog button{self.primary_btn_class}")
+        with b.wait_timeout(300):
+            b.wait_not_present("#realms-join-dialog")
+        wait_number_domains(1)
 
         self.allow_journal_messages(".*No authentication agent found.*")
         self.allow_restart_journal_messages()
@@ -266,13 +292,13 @@ class CommonTests:
 
         # Show domain information
         b.click(self.domain_sel)
-        b.wait_popup("realms-op")
+        b.wait_popup("realms-leave-dialog")
         b.wait_text("#realms-op-info-domain", "cockpit.lan")
         b.wait_text("#realms-op-info-login-format", "username")  # no @domain
         b.wait_text("#realms-op-info-server-sw", self.expected_server_software)
         b.wait_text("#realms-op-info-client-sw", "sssd")
-        b.click(".realms-op-cancel")
-        b.wait_popdown("realms-op")
+        b.click(f"#realms-leave-dialog button{self.default_btn_class}")
+        b.wait_not_present("#realms-leave-dialog")
 
         # should be able to run admin operations
         b.go('/system/services#/systemd-tmpfiles-clean.timer')
@@ -316,14 +342,15 @@ class CommonTests:
         # join client machine with Cockpit, to create the HTTP/ principal and /etc/cockpit/krb5.keytab
         self.login_and_go("/system")
         b.click("#system_information_domain_button")
-        b.wait_popup("realms-op")
-        b.set_val("#realms-op-address", "cockpit.lan")
-        b.wait_text(".realms-op-address-error", "Contacted domain")
-        b.set_val("#realms-op-admin", self.admin_user)
-        b.set_val("#realms-op-admin-password", self.admin_password)
-        b.click(".realms-op-apply")
+        b.wait_popup("realms-join-dialog")
+        b.wait_attr("#realms-op-address", "data-discover", "done")
+        b.set_input_text("#realms-op-address", "cockpit.lan")
+        b.wait_text("#realms-op-address-helper", "Contacted domain")
+        b.set_input_text("#realms-op-admin", self.admin_user)
+        b.set_input_text("#realms-op-admin-password", self.admin_password)
+        b.click(f"#realms-join-dialog button{self.primary_btn_class}")
         with b.wait_timeout(300):
-            b.wait_popdown("realms-op")
+            b.wait_not_present("#realms-join-dialog")
         b.logout()
         m.execute('while ! id alice; do sleep 5; systemctl restart sssd; done', timeout=300)
 
@@ -506,7 +533,20 @@ ExecStart=/bin/true
         # correct permissions
         self.assertEqual("root:cockpit-ws/640", m.execute("stat --printf '%U:%G/%a' /etc/cockpit/ws-certs.d/10-ipa.key"))
         # cert is being tracked
-        self.assertIn("MONITORING", m.execute("ipa-getcert list"))
+        out = m.execute("ipa-getcert list")
+        self.assertIn("MONITORING", out)
+        if m.image.startswith("rhel-8") or m.image in ["centos-8-stream"]:
+            # fall back to certificate copy mode (with broken refresh), due to missing SELinux policy
+            self.assertIn("/run/cockpit/certificate-helper/10-ipa.key", out)
+        else:
+            # on most OSes certmonger can directly write and auto-refresh the certificates
+            self.assertIn("/etc/cockpit/ws-certs.d/10-ipa.key", out)
+            # ensure that refreshing works
+            old_cert = m.execute("cat /etc/cockpit/ws-certs.d/10-ipa.cert").strip()
+            m.execute("ipa-getcert rekey --verbose --wait -f /etc/cockpit/ws-certs.d/10-ipa.cert")
+            new_cert = m.execute("cat /etc/cockpit/ws-certs.d/10-ipa.cert").strip()
+            self.assertNotEqual(old_cert, new_cert)
+
         # Restart without SSL (IPA certificate is not on the testing host)
         m.stop_cockpit()
         m.start_cockpit()
@@ -518,14 +558,14 @@ ExecStart=/bin/true
         b.click("#hosts-sel button")
         b.click("button:contains('Add new host')")
         b.wait_popup('hosts_setup_server_dialog')
-        b.set_val('#add-machine-address', "x0.cockpit.lan")
-        b.click('#hosts_setup_server_dialog .modal-footer button:contains(Add)')
+        b.set_input_text('#add-machine-address', "x0.cockpit.lan")
+        b.click('#hosts_setup_server_dialog button:contains(Add)')
 
         # with --pubkey support this should Just Work, otherwise confirm fingerprint
         if '--pubkey' not in m.execute("sss_ssh_knownhostsproxy --help || true"):
             b.wait_in_text('#hosts_setup_server_dialog', "You are connecting to x0.cockpit.lan for the first time.")
-            b.click('#hosts_setup_server_dialog .modal-footer button:contains(Accept key and connect)')
-        b.wait_popdown('hosts_setup_server_dialog')
+            b.click('#hosts_setup_server_dialog button:contains(Accept key and connect)')
+        b.wait_not_present('#hosts_setup_server_dialog')
         b.wait_visible("a[href='/@x0.cockpit.lan']")
         b.logout()
 
@@ -606,13 +646,16 @@ ExecStart=/bin/true
 
         # Join cockpit.lan
         b.click(self.domain_sel)
-        b.wait_popup("realms-op")
-        b.set_val(self.op_address, "cockpit.lan")
-        b.wait_in_text(".realms-op-address-error", "Domain cockpit.lan is not supported")
-        b.set_val(self.op_admin, self.admin_user)
-        b.set_val(self.op_admin_password, self.admin_password)
-        b.click(".realms-op-apply")
-        b.wait_text(".realms-op-message", "Joining this domain is not supported")
+        b.wait_popup("realms-join-dialog")
+        b.wait_attr("#realms-op-address", "data-discover", "done")
+        b.set_input_text(self.op_address, "cockpit.lan")
+        b.wait_in_text("#realms-op-address-helper", "Domain is not supported")
+        # no admin name auto-detection for unsupported domains
+        b.wait_val(self.op_admin, "")
+        b.set_input_text(self.op_admin, self.admin_user)
+        b.set_input_text(self.op_admin_password, self.admin_password)
+        # Join button disabled
+        b.wait_visible(f"#realms-join-dialog button{self.primary_btn_class}:disabled")
 
         self.allow_journal_messages(".*couldn't introspect /org/freedesktop/realmd.*",
                                     "sudo: unable to resolve host x0.cockpit.lan: Name or service not known")
@@ -715,7 +758,7 @@ ipa-advise enable-admins-sudo | sh -ex
         # now sudo works with the delegated ticket
         # this requires https://github.com/sudo-project/sudo/commit/3b7977a42c0 (see https://bugzilla.redhat.com/show_bug.cgi?id=1917379)
         # to actually work, so on older distros it fails
-        supports_sudo_krb = m.image not in ["rhel-8-5", "rhel-8-6", "centos-8-stream", "ubuntu-2004", "ubuntu-stable"]
+        supports_sudo_krb = m.image not in ["rhel-8-5", "rhel-8-6", "centos-8-stream", "ubuntu-2004"]
         b.open_superuser_dialog()
 
         if supports_sudo_krb:
@@ -741,7 +784,7 @@ ipa-advise enable-admins-sudo | sh -ex
         b.switch_to_top()
         b.click("#hosts-sel button")
         b.click(".nav-hosts-actions button")
-        b.set_val("#add-machine-address", "x0.cockpit.lan")
+        b.set_input_text("#add-machine-address", "x0.cockpit.lan")
         b.click("#hosts_setup_server_dialog .pf-m-primary")
         b.click(".view-hosts a[href='/@x0.cockpit.lan']")
         b.wait_js_cond("window.location.pathname == '/@x0.cockpit.lan/system'")
@@ -998,13 +1041,13 @@ ExecStart=/bin/true
         b.switch_to_top()
         b.go("/@x0.cockpit.lan/system/terminal")
         b.click("#machine-troubleshoot")
-        b.wait_popup('troubleshoot-dialog')
-        b.click('#troubleshoot-dialog .modal-footer button:contains(Add)')
+        b.wait_visible('#hosts_setup_server_dialog')
+        b.click('#hosts_setup_server_dialog button:contains(Add)')
         # with --pubkey support the fingerprint is already known, otherwise confirm fingerprint
         if '--pubkey' not in m.execute("sss_ssh_knownhostsproxy --help || true"):
-            b.wait_in_text('#troubleshoot-dialog', "You are connecting to x0.cockpit.lan for the first time.")
-            b.click('#troubleshoot-dialog .modal-footer button:contains(Accept key and connect)')
-        b.wait_popdown('troubleshoot-dialog')
+            b.wait_in_text('#hosts_setup_server_dialog', "You are connecting to x0.cockpit.lan for the first time.")
+            b.click('#hosts_setup_server_dialog button:contains(Accept key and connect)')
+        b.wait_not_present('#hosts_setup_server_dialog')
 
         b.enter_page("/system/terminal", host="x0.cockpit.lan")
         b.wait_visible(".terminal")
@@ -1135,12 +1178,16 @@ class TestPackageInstall(packagelib.PackageCase):
         b.wait_not_present(".pf-c-modal-box:contains('Install software')")
 
         # should continue straight to join dialog
-        b.wait_visible("#realms-op")
-        b.wait_popup("realms-op")
+        b.wait_visible("#realms-join-dialog")
+
+        # no auto-detected domain/admin
+        b.wait_attr("#realms-op-address", "data-discover", "done")
+        self.assertEqual(b.val("#realms-op-address"), "")
+        self.assertEqual(b.val("#realms-op-admin"), "")
 
         # no running IPA server for this test, so just cancel
-        b.click(".realms-op-cancel")
-        b.wait_popdown("realms-op")
+        b.click("#realms-join-dialog button.pf-m-link")
+        b.wait_not_present("#realms-join-dialog")
 
         # should not have a tooltip any more
         b.wait_not_present("#system_information_domain_tooltip")

@@ -3,14 +3,13 @@ import cockpit from "cockpit";
 import React from 'react';
 import ReactDOM from "react-dom";
 import PropTypes from 'prop-types';
-import { PageSidebar, Button } from '@patternfly/react-core';
+import { PageSidebar, Button, Tooltip } from '@patternfly/react-core';
 import { EditIcon, MinusIcon } from '@patternfly/react-icons';
 
 import 'polyfills';
 import { superuser } from "superuser";
 import { CockpitNav, CockpitNavItem } from "./nav.jsx";
-
-import { new_machine_dialog_manager } from "./machines/machine-dialogs";
+import { HostModal } from "./hosts_dialog.jsx";
 
 import "../../node_modules/@patternfly/patternfly/components/Select/select.css";
 
@@ -58,6 +57,8 @@ export class CockpitHosts extends React.Component {
             current_user: "",
             current_key: props.machine.key,
             privileged: false,
+            show_modal: false,
+            edit_machine: null,
         };
 
         this.toggleMenu = this.toggleMenu.bind(this);
@@ -66,8 +67,6 @@ export class CockpitHosts extends React.Component {
         this.onEditHosts = this.onEditHosts.bind(this);
         this.onHostEdit = this.onHostEdit.bind(this);
         this.onRemove = this.onRemove.bind(this);
-
-        this.mdialogs = new_machine_dialog_manager(this.props.machines);
     }
 
     componentDidMount() {
@@ -106,19 +105,11 @@ export class CockpitHosts extends React.Component {
     }
 
     onAddNewHost() {
-        this.mdialogs.render_dialog("add-machine", "hosts_setup_server_dialog");
+        this.setState({ show_modal: true });
     }
 
     onHostEdit(event, machine) {
-        this.mdialogs.render_dialog("add-machine", "hosts_setup_server_dialog", machine.address,
-                                    (new_connection_string) => {
-                                        const parts = this.props.machines.split_connection_string(new_connection_string);
-                                        if (machine == this.props.machine && parts.address != machine.address) {
-                                            const addr = this.props.hostAddr({ host: parts.address }, true);
-                                            this.props.jump(addr);
-                                        }
-                                        return Promise.resolve();
-                                    });
+        this.setState({ show_modal: true, edit_machine: machine });
     }
 
     onEditHosts() {
@@ -178,44 +169,63 @@ export class CockpitHosts extends React.Component {
                 status={m.state === "failed" ? { type: "error", title: _("Connection error") } : null}
                 className={m.state}
                 jump={this.props.jump}
-                actions={[
-                    <Button isDisabled={m.address === "localhost"} className="nav-action" hidden={!editing} onClick={e => this.onHostEdit(e, m)} key={m.label + "edit"} variant="secondary"><EditIcon /></Button>,
-                    <Button isDisabled={m.address === "localhost"} onClick={e => this.onRemove(e, m)} className="nav-action" hidden={!editing} key={m.label + "remove"} variant="danger"><MinusIcon /></Button>
-                ]}
+                actions={<>
+                    <Tooltip content={_("Edit")} position="right">
+                        <Button isDisabled={m.address === "localhost"} className="nav-action" hidden={!editing} onClick={e => this.onHostEdit(e, m)} key={m.label + "edit"} variant="secondary"><EditIcon /></Button>
+                    </Tooltip>
+                    <Tooltip content={_("Remove")} position="right">
+                        <Button isDisabled={m.address === "localhost"} onClick={e => this.onRemove(e, m)} className="nav-action" hidden={!editing} key={m.label + "remove"} variant="danger"><MinusIcon /></Button>
+                    </Tooltip>
+                </>}
         />;
         const label = this.props.machine.label || "";
         const user = this.props.machine.user || this.state.current_user;
         return (
-            <div className="ct-switcher">
-                <div className="pf-c-select pf-m-dark">
-                    <button onClick={this.toggleMenu} id="pf-toggle-id-58" aria-labelledby="pf-toggle-id-58" aria-expanded={(this.state.opened ? "true" : "false")} aria-haspopup="listbox" type="button" className="ct-nav-toggle pf-c-select__toggle pf-m-plain">
-                        <span className="pf-c-select__toggle-wrapper desktop_v">
-                            <span className="pf-c-select__toggle-text">
-                                <HostLine user={user} host={label} />
+            <>
+                <div className="ct-switcher">
+                    <div className="pf-c-select pf-m-dark">
+                        <button onClick={this.toggleMenu} id="pf-toggle-id-58" aria-labelledby="pf-toggle-id-58" aria-expanded={(this.state.opened ? "true" : "false")} aria-haspopup="listbox" type="button" className="ct-nav-toggle pf-c-select__toggle pf-m-plain">
+                            <span className="pf-c-select__toggle-wrapper desktop_v">
+                                <span className="pf-c-select__toggle-text">
+                                    <HostLine user={user} host={label} />
+                                </span>
                             </span>
-                        </span>
-                        <span className={"pf-c-select__toggle-arrow mobile_v fa fa-caret-" + (this.state.opened ? "up" : "down")} aria-hidden="true" />
-                        <span className="pf-c-select__toggle-wrapper mobile_v">
-                            {_("Host")}
-                        </span>
-                        <span className={"pf-c-select__toggle-arrow fa desktop_v fa-caret-" + (this.state.opened ? "up" : "down")} aria-hidden="true" />
-                    </button>
-                </div>
+                            <span className={"pf-c-select__toggle-arrow mobile_v fa fa-caret-" + (this.state.opened ? "up" : "down")} aria-hidden="true" />
+                            <span className="pf-c-select__toggle-wrapper mobile_v">
+                                {_("Host")}
+                            </span>
+                            <span className={"pf-c-select__toggle-arrow fa desktop_v fa-caret-" + (this.state.opened ? "up" : "down")} aria-hidden="true" />
+                        </button>
+                    </div>
 
-                { this.state.opened &&
-                <HostsSelector>
-                    <PageSidebar isNavOpen={this.props.opened} theme="dark" className={"sidebar-hosts" + (this.state.editing ? " edit-hosts" : "")} nav={
-                        <>
-                            <CockpitNav selector={this.props.selector} groups={groups} item_render={render} sorting={(a, b) => true} filtering={this.filterHosts} current={label} />
-                            <div className="nav-hosts-actions">
-                                {this.props.machines.list.length > 1 && <Button variant="secondary" onClick={this.onEditHosts}>{this.state.editing ? _("Stop editing hosts") : _("Edit hosts")}</Button>}
-                                <Button variant="secondary" onClick={this.onAddNewHost}>{_("Add new host")}</Button>
-                            </div>
-                        </>
-                    } />
-                </HostsSelector>
+                    { this.state.opened &&
+                    <HostsSelector>
+                        <PageSidebar isNavOpen={this.props.opened} theme="dark" className={"sidebar-hosts" + (this.state.editing ? " edit-hosts" : "")} nav={
+                            <>
+                                <CockpitNav selector={this.props.selector} groups={groups} item_render={render} sorting={(a, b) => true} filtering={this.filterHosts} current={label} />
+                                <div className="nav-hosts-actions">
+                                    {this.props.machines.list.length > 1 && <Button variant="secondary" onClick={this.onEditHosts}>{this.state.editing ? _("Stop editing hosts") : _("Edit hosts")}</Button>}
+                                    <Button variant="secondary" onClick={this.onAddNewHost}>{_("Add new host")}</Button>
+                                </div>
+                            </>
+                        } />
+                    </HostsSelector>
+                    }
+                </div>
+                {this.state.show_modal &&
+                    <HostModal machines_ins={this.props.machines}
+                               onClose={() => this.setState({ show_modal: false, edit_machine: null })}
+                               address={this.state.edit_machine ? this.state.edit_machine.address : null}
+                               caller_callback={this.state.edit_machine ? (new_connection_string) => {
+                                   const parts = this.props.machines.split_connection_string(new_connection_string);
+                                   if (this.state.edit_machine == this.props.machine && parts.address != this.state.edit_machine.address) {
+                                       const addr = this.props.hostAddr({ host: parts.address }, true);
+                                       this.props.jump(addr);
+                                   }
+                                   return Promise.resolve();
+                               } : null } />
                 }
-            </div>
+            </>
         );
     }
 }

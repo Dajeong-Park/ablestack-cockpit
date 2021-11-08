@@ -34,7 +34,7 @@ class TestTerminal(MachineCase):
 
         # Make sure we get what we expect
         self.write_file("/home/admin/.bashrc", r"""
-PS1="\u@\h \W]\$ "
+PS1="\u@local \W]\$ "
 PROMPT_COMMAND='printf "\033]0;%s@%s:%s\007" "${USER}" "${HOSTNAME%%.*}" "${PWD/#$HOME/\~}"'
 """, append=True)
 
@@ -94,10 +94,7 @@ PROMPT_COMMAND='printf "\033]0;%s@%s:%s\007" "${USER}" "${HOSTNAME%%.*}" "${PWD/
         wait_line(n + 2, prompt)
 
         b.key_press('echo -e "1\\u0041"\r')
-        if not b.cdp.mobile:
-            wait_line(n + 3, '1A')
-        else:
-            wait_line(n + 4, '1A')
+        wait_line(n + 3, '1A')
 
         # The '@' sign is in the default prompt
         b.wait_in_text(".terminal-title", '@')
@@ -125,15 +122,14 @@ PROMPT_COMMAND='printf "\033]0;%s@%s:%s\007" "${USER}" "${HOSTNAME%%.*}" "${PWD/
 
         def select_line(sel, width):
             # Select line by dragging mouse
-            # 10px padding on all sides
             # Height on a line is around 14px, so start approx. in the middle of line
-            b.mouse(sel, "mousedown", 10, 17)
-            b.mouse(sel, "mousemove", 10 + width, 17)
-            b.mouse(sel, "mouseup", 10 + width, 17)
+            b.mouse(sel, "mousedown", 0, 17)
+            b.mouse(sel, "mousemove", width, 17)
+            b.mouse(sel, "mouseup", width, 17)
 
         # Firefox does not support setting of permissions
         # and therefore we cannot test copy/paste with context menu
-        if b.cdp.browser != "firefox":
+        if b.cdp.browser.name != "firefox":
             try:
                 b.grant_permissions("clipboardReadWrite", "clipboardSanitizedWrite")
             except RuntimeError:
@@ -144,8 +140,6 @@ PROMPT_COMMAND='printf "\033]0;%s@%s:%s\007" "${USER}" "${HOSTNAME%%.*}" "${PWD/
             wait_line(n, prompt)
             b.key_press('echo "XYZ"\r')
             echo_result_line = n + 1
-            if b.cdp.mobile:
-                echo_result_line = n + 2
 
             wait_line(echo_result_line, "XYZ")
 
@@ -177,8 +171,6 @@ PROMPT_COMMAND='printf "\033]0;%s@%s:%s\007" "${USER}" "${HOSTNAME%%.*}" "${PWD/
         wait_line(n, prompt)
         b.key_press('echo "foo"\r')
         echo_result_line = n + 1
-        if b.cdp.mobile:
-            echo_result_line = n + 2
 
         wait_line(echo_result_line, "foo")
 
